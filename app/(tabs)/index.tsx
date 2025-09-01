@@ -1,75 +1,151 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+// Importaciones necesarias para React y componentes de React Native
+import React from "react";
+import { StyleSheet, View } from "react-native";
+// Componentes personalizados de la aplicación
+import { ThemedText } from "@/components/ThemedText"; // Texto que se adapta al tema claro/oscuro
+import { ThemedView } from "@/components/ThemedView"; // Vista que se adapta al tema claro/oscuro
+import { IconSymbol } from "@/components/ui/IconSymbol"; // Componente para mostrar íconos
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-
-export default function HomeScreen() {
+// Componente principal de la pantalla del mapa (pantalla de inicio)
+export default function MapScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
+    // Contenedor principal que ocupa toda la pantalla
+    <ThemedView style={styles.container}>
+      {/* Sección del encabezado con branding de RadarPet */}
+      <ThemedView style={styles.header}>
+        {/* Título principal de la aplicación */}
+        <ThemedText type="title" style={styles.title}>
+          RadarPet
+        </ThemedText>
+        {/* Subtítulo descriptivo de la funcionalidad */}
+        <ThemedText style={styles.subtitle}>
+          Encuentra a tu mascota perdida
         </ThemedText>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
+
+      {/* Área placeholder para el mapa interactivo */}
+      <View style={styles.mapPlaceholder}>
+        {/* Ícono de mapa como placeholder visual */}
+        <IconSymbol size={80} name="map" color="#666" />
+        {/* Texto indicativo del contenido futuro */}
+        <ThemedText style={styles.mapText}>Mapa Interactivo</ThemedText>
+        {/* Descripción de la funcionalidad del mapa */}
+        <ThemedText style={styles.mapSubtext}>
+          Aquí se mostrará el mapa con las mascotas perdidas y encontradas
         </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
+      </View>
+
+      {/* Sección de acciones rápidas para el usuario */}
+      <ThemedView style={styles.quickActions}>
+        {/* Título de la sección de acciones */}
+        <ThemedText type="subtitle" style={styles.quickActionsTitle}>
+          Acciones Rápidas
         </ThemedText>
+        {/* Contenedor horizontal para los botones de acción */}
+        <View style={styles.actionButtons}>
+          {/* Botón para reportar mascota perdida */}
+          <View style={styles.actionButton}>
+            {/* Ícono de alerta para mascotas perdidas */}
+            <IconSymbol
+              size={32}
+              name="exclamationmark.triangle.fill"
+              color="#FF6B6B"
+            />
+            {/* Texto descriptivo del botón */}
+            <ThemedText style={styles.actionText}>Reportar Perdida</ThemedText>
+          </View>
+          {/* Botón para reportar mascota encontrada */}
+          <View style={styles.actionButton}>
+            {/* Ícono de check para mascotas encontradas */}
+            <IconSymbol
+              size={32}
+              name="checkmark.circle.fill"
+              color="#4ECDC4"
+            />
+            {/* Texto descriptivo del botón */}
+            <ThemedText style={styles.actionText}>
+              Reportar Encontrada
+            </ThemedText>
+          </View>
+        </View>
       </ThemedView>
-    </ParallaxScrollView>
+    </ThemedView>
   );
 }
 
+// Objeto de estilos para todos los componentes de la pantalla
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  // Contenedor principal que ocupa toda la pantalla
+  container: {
+    flex: 1, // Ocupa todo el espacio disponible
+    paddingTop: 60, // Espacio superior para evitar la barra de estado
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  // Estilo para la sección del encabezado
+  header: {
+    alignItems: "center", // Centra los elementos horizontalmente
+    paddingHorizontal: 20, // Espaciado horizontal interno
+    paddingBottom: 20, // Espaciado inferior
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  // Estilo para el título principal de RadarPet
+  title: {
+    fontSize: 32, // Tamaño de fuente grande para el título
+    fontWeight: "bold", // Texto en negrita
+    color: "#2E86AB", // Color azul característico de la marca
+  },
+  // Estilo para el subtítulo descriptivo
+  subtitle: {
+    fontSize: 16, // Tamaño de fuente mediano
+    marginTop: 5, // Pequeño espacio superior
+    opacity: 0.7, // Transparencia para menor prominencia
+  },
+  // Área placeholder para el mapa futuro
+  mapPlaceholder: {
+    flex: 1, // Ocupa el espacio principal disponible
+    justifyContent: "center", // Centra verticalmente el contenido
+    alignItems: "center", // Centra horizontalmente el contenido
+    margin: 20, // Margen exterior
+    backgroundColor: "#F5F5F5", // Fondo gris claro
+    borderRadius: 15, // Bordes muy redondeados
+    padding: 40, // Espaciado interno generoso
+  },
+  // Texto principal del placeholder del mapa
+  mapText: {
+    fontSize: 18, // Tamaño de fuente mediano-grande
+    fontWeight: "600", // Peso semi-negrita
+    marginTop: 15, // Espacio superior después del ícono
+  },
+  // Texto descriptivo del placeholder del mapa
+  mapSubtext: {
+    fontSize: 14, // Tamaño de fuente pequeño
+    textAlign: "center", // Texto centrado
+    marginTop: 10, // Espacio superior
+    opacity: 0.6, // Transparencia para menor prominencia
+  },
+  // Contenedor de la sección de acciones rápidas
+  quickActions: {
+    padding: 20, // Espaciado interno
+  },
+  // Título de la sección de acciones rápidas
+  quickActionsTitle: {
+    marginBottom: 15, // Espacio inferior antes de los botones
+  },
+  // Contenedor horizontal para los botones de acción
+  actionButtons: {
+    flexDirection: "row", // Disposición horizontal
+    justifyContent: "space-around", // Distribución uniforme del espacio
+  },
+  // Estilo individual para cada botón de acción
+  actionButton: {
+    alignItems: "center", // Centra el contenido verticalmente
+    padding: 15, // Espaciado interno
+    backgroundColor: "#F8F9FA", // Fondo gris muy claro
+    borderRadius: 12, // Bordes redondeados
+    minWidth: 120, // Ancho mínimo para consistencia
+  },
+  // Texto descriptivo de los botones de acción
+  actionText: {
+    marginTop: 8, // Espacio superior después del ícono
+    fontSize: 12, // Tamaño de fuente pequeño
+    textAlign: "center", // Texto centrado
   },
 });
