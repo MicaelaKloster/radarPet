@@ -1,7 +1,8 @@
+import { EmailIcon, GoogleIcon, LockIcon, MapIcon, PhoneIcon, UserIcon } from '@/components/Icons';
 import { loginWithGoogle, supabase } from '@/lib/supabase';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 // Pantalla de Registro simplificada (sin avatar)
 export default function RegisterScreen() {
@@ -61,16 +62,67 @@ export default function RegisterScreen() {
 
   return (
     <View style={styles.container}>
+      <Image
+        source={require('@/Iconos/Logo.png')}
+        style={styles.logo}
+        resizeMode="contain"
+      />
       <Text style={styles.title}>Regístrate</Text>
-      <TextInput style={styles.input} placeholder="Nombre" value={nombre} onChangeText={setNombre} />
-      <TextInput style={styles.input} placeholder="Teléfono" keyboardType="phone-pad" value={telefono} onChangeText={setTelefono} />
-      <TextInput style={styles.input} placeholder="Ciudad" value={ciudad} onChangeText={setCiudad} />
-      <TextInput style={styles.input} placeholder="Email" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
-      <TextInput style={styles.input} placeholder="Contraseña" secureTextEntry value={password} onChangeText={setPassword} />
+      <View style={styles.inputContainer}>
+        <UserIcon width={20} height={20} color="#666" />
+        <TextInput 
+          style={styles.inputWithIcon} 
+          placeholder="Nombre" 
+          value={nombre} 
+          onChangeText={setNombre} 
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <PhoneIcon width={20} height={20} color="#666" />
+        <TextInput 
+          style={styles.inputWithIcon} 
+          placeholder="Teléfono" 
+          keyboardType="phone-pad" 
+          value={telefono} 
+          onChangeText={setTelefono} 
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <MapIcon width={20} height={20} color="#666" />
+        <TextInput 
+          style={styles.inputWithIcon} 
+          placeholder="Ciudad" 
+          value={ciudad} 
+          onChangeText={setCiudad} 
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <EmailIcon width={20} height={20} color="#666" />
+        <TextInput 
+          style={styles.inputWithIcon} 
+          placeholder="Email" 
+          autoCapitalize="none" 
+          keyboardType="email-address" 
+          value={email} 
+          onChangeText={setEmail} 
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <LockIcon width={20} height={20} color="#666" />
+        <TextInput 
+          style={styles.inputWithIcon} 
+          placeholder="Contraseña" 
+          secureTextEntry 
+          value={password} 
+          onChangeText={setPassword} 
+        />
+      </View>
       <TouchableOpacity style={styles.buttonPrimary} onPress={registerEmail} disabled={loading}>
+        <EmailIcon width={20} height={20} color="#fff" />
         <Text style={styles.buttonText}>Crear cuenta (Email)</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.oauthGoogle} onPress={registerGoogle} disabled={loading}>
+        <GoogleIcon width={20} height={20} />
         <Text style={styles.buttonText}>Registrarme con Google</Text>
       </TouchableOpacity>
       <Link href="/(auth)/login" asChild>
@@ -85,10 +137,38 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 24, textAlign: 'center' },
+  logo: { width: 100, height: 100, alignSelf: 'center', marginBottom: 20 },
+  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 24, textAlign: 'center', color: '#16a34a' },
+  inputContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    borderWidth: 1, 
+    borderColor: '#ccc', 
+    borderRadius: 8, 
+    paddingHorizontal: 12, 
+    marginBottom: 12,
+    height: 50
+  },
+  inputWithIcon: { flex: 1, marginLeft: 10, fontSize: 16 },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 12 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16, marginLeft: 8 },
   link: { marginTop: 16, color: '#2563eb', textAlign: 'center' },
-  buttonPrimary: { backgroundColor: '#16a34a', padding: 16, borderRadius: 8, alignItems: 'center', marginBottom: 12 },
-  oauthGoogle: { backgroundColor: '#ea4335', padding: 16, borderRadius: 8, alignItems: 'center', marginBottom: 12 },
+  buttonPrimary: { 
+    backgroundColor: '#16a34a', 
+    padding: 16, 
+    borderRadius: 8, 
+    alignItems: 'center', 
+    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'center'
+  },
+  oauthGoogle: { 
+    backgroundColor: '#ea4335', 
+    padding: 16, 
+    borderRadius: 8, 
+    alignItems: 'center', 
+    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'center'
+  },
 });

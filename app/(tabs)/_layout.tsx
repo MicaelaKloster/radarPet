@@ -2,8 +2,8 @@ import { Redirect, Tabs } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
 
+import { CustomTabIcon } from "@/components/CustomTabIcon";
 import { HapticTab } from "@/components/HapticTab";
-import { IconSymbol } from "@/components/ui/IconSymbol";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
@@ -37,6 +37,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
+        tabBarShowLabel: false,
         tabBarStyle: Platform.select({
           ios: {
             // Use a transparent background on iOS to show the blur effect
@@ -50,22 +51,17 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Mapa",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="map.fill" color={color} />
+          tabBarIcon: ({ focused }) => (
+            <CustomTabIcon focused={focused} iconName="mapa" size={28} />
           ),
         }}
       />
-      {/* Ajustar estos nombres a los archivos que existan */}
       <Tabs.Screen
         name="reportes-perdidas"
         options={{
           title: "Perdida",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol
-              size={28}
-              name="exclamationmark.triangle.fill"
-              color={color}
-            />
+          tabBarIcon: ({ focused }) => (
+            <CustomTabIcon focused={focused} iconName="patita" size={28} />
           ),
         }}
       />
@@ -73,8 +69,8 @@ export default function TabLayout() {
         name="reporte-encontradas"
         options={{
           title: "Encontrada",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="checkmark.circle.fill" color={color} />
+          tabBarIcon: ({ focused }) => (
+            <CustomTabIcon focused={focused} iconName="patita" size={28} />
           ),
         }}
       />
@@ -82,8 +78,17 @@ export default function TabLayout() {
         name="perfil"
         options={{
           title: "Perfil",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="person.fill" color={color} />
+          tabBarIcon: ({ focused }) => (
+            <CustomTabIcon focused={focused} iconName="perfil" size={28} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: "Explorar",
+          tabBarIcon: ({ focused }) => (
+            <CustomTabIcon focused={focused} iconName="inicio" size={28} />
           ),
         }}
       />
