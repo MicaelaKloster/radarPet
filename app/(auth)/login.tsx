@@ -75,7 +75,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
   logo: { width: 100, height: 100, alignSelf: 'center', marginBottom: 20 },
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 32, textAlign: 'center', color: '#2563eb' },
+  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 32, textAlign: 'center', color: '#2CBDAA' },
   inputContainer: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -88,9 +88,9 @@ const styles = StyleSheet.create({
   },
   inputWithIcon: { flex: 1, marginLeft: 10, fontSize: 16 },
   buttonText: { color: '#fff', fontWeight: '600', fontSize: 16, marginLeft: 8 },
-  link: { marginTop: 16, color: '#2563eb', textAlign: 'center' },
+  link: { marginTop: 16, color: '#2CBDAA', textAlign: 'center' },
   oauthGoogle: { 
-    backgroundColor: '#ea4335', 
+    backgroundColor: '#249A8A', 
     padding: 16, 
     borderRadius: 8, 
     alignItems: 'center', 
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   buttonPrimary: { 
-    backgroundColor: '#2563eb', 
+    backgroundColor: '#2CBDAA', 
     padding: 16, 
     borderRadius: 8, 
     alignItems: 'center', 
