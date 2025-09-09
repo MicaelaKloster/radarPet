@@ -5,6 +5,7 @@ import { StyleSheet, View } from "react-native";
 import { ThemedText } from "@/components/ThemedText"; // Texto que se adapta al tema claro/oscuro
 import { ThemedView } from "@/components/ThemedView"; // Vista que se adapta al tema claro/oscuro
 import { IconSymbol } from "@/components/ui/IconSymbol"; // Componente para mostrar íconos
+import MapaListado from "@/components/MapaListado";
 
 // Componente principal de la pantalla del mapa (pantalla de inicio)
 export default function MapScreen() {
@@ -23,16 +24,9 @@ export default function MapScreen() {
         </ThemedText>
       </ThemedView>
 
-      {/* Área placeholder para el mapa interactivo */}
-      <View style={styles.mapPlaceholder}>
-        {/* Ícono de mapa como placeholder visual */}
-        <IconSymbol size={80} name="map" color="#666" />
-        {/* Texto indicativo del contenido futuro */}
-        <ThemedText style={styles.mapText}>Mapa Interactivo</ThemedText>
-        {/* Descripción de la funcionalidad del mapa */}
-        <ThemedText style={styles.mapSubtext}>
-          Aquí se mostrará el mapa con las mascotas perdidas y encontradas
-        </ThemedText>
+      {/* Mapa interactivo con reportes */}
+      <View style={styles.mapContainer}>
+        <MapaListado />
       </View>
 
       {/* Sección de acciones rápidas para el usuario */}
@@ -98,28 +92,13 @@ const styles = StyleSheet.create({
     marginTop: 5, // Pequeño espacio superior
     opacity: 0.7, // Transparencia para menor prominencia
   },
-  // Área placeholder para el mapa futuro
-  mapPlaceholder: {
+  // Contenedor del mapa interactivo
+  mapContainer: {
     flex: 1, // Ocupa el espacio principal disponible
-    justifyContent: "center", // Centra verticalmente el contenido
-    alignItems: "center", // Centra horizontalmente el contenido
     margin: 20, // Margen exterior
-    backgroundColor: "#F5F5F5", // Fondo gris claro
     borderRadius: 15, // Bordes muy redondeados
-    padding: 40, // Espaciado interno generoso
-  },
-  // Texto principal del placeholder del mapa
-  mapText: {
-    fontSize: 18, // Tamaño de fuente mediano-grande
-    fontWeight: "600", // Peso semi-negrita
-    marginTop: 15, // Espacio superior después del ícono
-  },
-  // Texto descriptivo del placeholder del mapa
-  mapSubtext: {
-    fontSize: 14, // Tamaño de fuente pequeño
-    textAlign: "center", // Texto centrado
-    marginTop: 10, // Espacio superior
-    opacity: 0.6, // Transparencia para menor prominencia
+    overflow: 'hidden', // Esconde el desbordamiento de bordes redondeados
+    backgroundColor: '#F5F5F5' // Fondo gris claro
   },
   // Contenedor de la sección de acciones rápidas
   quickActions: {

@@ -1,4 +1,4 @@
-import { TextStyle, ViewStyle } from 'react-native'
+import { Platform, TextStyle, ViewStyle } from 'react-native'
 
 // TIPOS DE DATOS
 export interface ColorPalette {
@@ -137,14 +137,17 @@ export interface BorderRadiusConfig {
 }
 
 export interface ShadowStyle extends ViewStyle {
-  shadowColor: string
-  shadowOffset: {
+  // Hacer opcionales las props nativas y agregar soporte web
+  shadowColor?: string
+  shadowOffset?: {
     width: number
     height: number
   }
-  shadowOpacity: number
-  shadowRadius: number
-  elevation: number
+  shadowOpacity?: number
+  shadowRadius?: number
+  elevation?: number
+  // Web (react-native-web)
+  boxShadow?: string
 }
 
 export interface ShadowsConfig {
@@ -369,46 +372,46 @@ export const BorderRadius: BorderRadiusConfig = {
 
 // SOMBRAS
 export const Shadows: ShadowsConfig = {
-  small: {
-    shadowColor: Colors.shadowColor,
-    shadowOffset: {
-      width: 0,
-      height: 1,
+  small: Platform.select<ShadowStyle>({
+    web: { boxShadow: '0px 1px 2px rgba(0,0,0,0.18)' },
+    default: {
+      shadowColor: Colors.shadowColor,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.18,
+      shadowRadius: 1.0,
+      elevation: 2,
     },
-    shadowOpacity: 0.18,
-    shadowRadius: 1.0,
-    elevation: 2,
-  },
-  medium: {
-    shadowColor: Colors.shadowColor,
-    shadowOffset: {
-      width: 0,
-      height: 2,
+  })!,
+  medium: Platform.select<ShadowStyle>({
+    web: { boxShadow: '0px 2px 6px rgba(0,0,0,0.20)' },
+    default: {
+      shadowColor: Colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.20,
+      shadowRadius: 2.62,
+      elevation: 4,
     },
-    shadowOpacity: 0.20,
-    shadowRadius: 2.62,
-    elevation: 4,
-  },
-  large: {
-    shadowColor: Colors.shadowColor,
-    shadowOffset: {
-      width: 0,
-      height: 4,
+  })!,
+  large: Platform.select<ShadowStyle>({
+    web: { boxShadow: '0px 4px 8px rgba(0,0,0,0.25)' },
+    default: {
+      shadowColor: Colors.shadowColor,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 8,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 8,
-  },
-  card: {
-    shadowColor: Colors.shadowColor,
-    shadowOffset: {
-      width: 0,
-      height: 2,
+  })!,
+  card: Platform.select<ShadowStyle>({
+    web: { boxShadow: '0px 2px 4px rgba(0,0,0,0.08)' },
+    default: {
+      shadowColor: Colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 3,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+  })!,
 }
 
 // LAYOUT

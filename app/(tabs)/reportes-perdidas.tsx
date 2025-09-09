@@ -1,4 +1,15 @@
-import React, { useEffect, useState } from "react";
+import MiniMapaSelector, { Coord } from "@/components/MiniMapaSelector";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { supabase } from "@/lib/supabase";
+import { decode as base64ToArrayBuffer } from 'base64-arraybuffer';
+import * as FileSystem from 'expo-file-system';
+import { Image } from 'expo-image'; // Mejor rendimiento para imágenes
+import * as ImageManipulator from 'expo-image-manipulator'; // Para redimensionar imágenes
+import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,52 +20,88 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as Location from "expo-location";
-import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from 'expo-file-system';
-import { Image } from 'expo-image'; // Mejor rendimiento para imágenes
-import * as ImageManipulator from 'expo-image-manipulator'; // Para redimensionar imágenes
-import { supabase } from "@/lib/supabase";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
-import { IconSymbol } from "@/components/ui/IconSymbol";
+
+// Helper para timeout de promesas (evita quedarse colgado sin feedback)
+async function withTimeout<T = any>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> {
+  let timeoutId: any;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`Timeout (${label}) después de ${ms}ms`)), ms);
+  });
+  try {
+    const result = await Promise.race([promise as any, timeoutPromise]);
+    return result as T;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// Parsear coordenadas desde texto "lat, lng"
+function parseCoordenadas(texto: string): LatLng | null {
+  if (!texto) return null;
+  const s = texto.trim().replace(/\s+/g, '');
+  const m = s.match(/^(-?\d{1,3}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)$/);
+  if (!m) return null;
+  const lat = parseFloat(m[1]);
+  const lng = parseFloat(m[2]);
+  if (isNaN(lat) || isNaN(lng)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { latitude: lat, longitude: lng };
+}
+
+// Constante compatible con la nueva API (evita deprecations)
+const IMAGE_MEDIA_TYPES: any = ['images'];
 
 // 2. Helper para manejo de errores
 const handleError = (error: any, context: string = '') => {
   console.error(`Error en ${context}:`, error);
   const errorMessage = error?.message || 'Ocurrió un error inesperado';
-  Alert.alert("Error", `Error al ${context}: ${errorMessage}`);
+  if (Platform.OS === 'web') {
+    (globalThis as any).alert?.(`Error al ${context}: ${errorMessage}`);
+  } else {
+    Alert.alert("Error", `Error al ${context}: ${errorMessage}`);
+  }
   return error;
 };
 
-//3. Helper para validar tipos de archivo de imagen
-const validarTipoImagen = (uri: string): boolean => {
-  const extension = uri.split('.').pop()?.toLowerCase();
-  const tiposPermitidos = ['jpg', 'jpeg', 'png', 'webp'];
-  return tiposPermitidos.includes(extension || '');
-};
+//3. Validación relajada: el picker ya limita a imágenes; aceptamos cualquier formato de imagen
+const validarTipoImagen = (_uri: string): boolean => true;
 
-// // 4. Helper para validar y parsear fechas
-// const validarFecha = (fechaString: string): string | null => {
-//   if (!fechaString.trim()) return null;
-  
-//   try {
-//     // Intentar parsear diferentes formatos comunes
-//     const fecha = new Date(fechaString);
-//     if (isNaN(fecha.getTime())) {
-//       throw new Error('Fecha inválida');
-//     }
-    
-//     // No permitir fechas futuras
-//     if (fecha > new Date()) {
-//       throw new Error('No se permiten fechas futuras');
-//     }
-    
-//     return fecha.toISOString();
-//   } catch {
-//     throw new Error('Formato de fecha inválido. Usa YYYY-MM-DD HH:MM o similar');
-//   }
-// };
+// 4. Helper para validar y parsear fechas
+function validarFecha(fechaString: string): string {
+  const s = fechaString?.trim();
+  if (!s) return new Date().toISOString();
+
+  // Intentar parseo directo (ISO u otros reconocidos por Date)
+  let parsed: Date | null = new Date(s);
+  if (isNaN(parsed.getTime())) {
+    parsed = null;
+  }
+
+  // Intentar formato DD/MM/YYYY [HH:MM]
+  if (!parsed) {
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
+    if (m) {
+      const [, dd, mm, yyyy, hh = '0', min = '0'] = m;
+      parsed = new Date(
+        parseInt(yyyy, 10),
+        parseInt(mm, 10) - 1,
+        parseInt(dd, 10),
+        parseInt(hh, 10),
+        parseInt(min, 10)
+      );
+    }
+  }
+
+  if (!parsed || isNaN(parsed.getTime())) {
+    throw new Error('Formato de fecha inválido. Usa YYYY-MM-DD HH:MM o DD/MM/YYYY');
+  }
+
+  if (parsed > new Date()) {
+    throw new Error('No se permiten fechas futuras');
+  }
+
+  return parsed.toISOString();
+}
 
 // 5. Tipos
 type Catalogo = { id: number; nombre: string };
@@ -74,7 +121,7 @@ type FormData = {
   recompensa: string;
 };
 
-export default function ReportLostScreen() {
+export default function ReportesPerdidasScreen() {
   // 6. Estado unificado de carga
   const [loading, setLoading] = useState({
     catalogos: true,
@@ -110,6 +157,12 @@ export default function ReportLostScreen() {
   // 9. Ubicación e imagen
   const [ubicacionActual, setUbicacionActual] = useState<LatLng | null>(null);
   const [foto, setFoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
+
+  // Derivado: coordenadas del formulario como objeto para el mapa
+  const coordsForMap: Coord | null = useMemo(() => {
+    const p = parseCoordenadas(formData.ultimaUbicacion);
+    return p ? { lat: p.latitude, lng: p.longitude } : null;
+  }, [formData.ultimaUbicacion]);
 
   // 10. Cargar catálogos (optimizado con Promise.allSettled para mejor manejo de errores)
   useEffect(() => {
@@ -152,123 +205,69 @@ export default function ReportLostScreen() {
     cargarCatalogos();
   }, []);
 
-   // 11. Función para obtener la ubicación
-const validarUbicacionIngresada = async () => {
+   // 11. Función para obtener la ubicación (usar GPS)
+const solicitarMiUbicacion = async () => {
   try {
-    setLoading((prev) => ({ ...prev, obteniendoUbicacion: true }));
+    setLoading(prev => ({ ...prev, obteniendoUbicacion: true }));
 
-    if (!formData.ultimaUbicacion.trim()) {
-      Alert.alert("Error", "Por favor, ingresa una dirección.");
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso denegado', 'No se puede obtener tu ubicación sin permisos.');
       return;
     }
 
-    const resultados = await Location.geocodeAsync(formData.ultimaUbicacion.trim());
-
-    if (resultados.length === 0) {
-      Alert.alert("Ubicación no válida. Por favor, verifica que sea correcta.");
-      return;
-    }
-
-    const coords = resultados[0];
-    setUbicacionActual({
-      latitude: coords.latitude,
-      longitude: coords.longitude,
+    const pos = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
     });
 
-    Alert.alert("Ubicación válida", "La dirección ingresada es válida.");
+    const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+    setUbicacionActual(coords);
+
+    // actualizar el campo de texto aunque no se muestre, para mantener la misma lógica downstream
+    setFormData(prev => ({ ...prev, ultimaUbicacion: `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}` }));
   } catch (error) {
-    handleError(error, "validar la ubicación");
+    handleError(error, 'obtener la ubicación actual');
   } finally {
-    setLoading((prev) => ({ ...prev, obteniendoUbicacion: false }));
+    setLoading(prev => ({ ...prev, obteniendoUbicacion: false }));
   }
 };
 
-  // const solicitarMiUbicacion = async () => {
-  //   try {
-  //     setLoading(prev => ({ ...prev, obteniendoUbicacion: true }));
-
-  //     const { status } = await Location.requestForegroundPermissionsAsync();
-  //     if (status !== "granted") {
-  //       Alert.alert("Permiso denegado", "Podés escribir la dirección manualmente.");
-  //       return;
-  //     }
-
-  //     const pos = await Location.getCurrentPositionAsync({
-  //       accuracy: Location.Accuracy.Balanced,
-  //       timeout: 15000, // Timeout de 15 segundos
-  //       maximumAge: 10000, // Usar ubicación cached si tiene menos de 10s
-  //     });
-      
-  //     const coords = {
-  //       latitude: pos.coords.latitude,
-  //       longitude: pos.coords.longitude,
-  //     };
-      
-  //     setUbicacionActual(coords);
-
-  //     // Obtener dirección legible
-  //     try {
-  //       const [rev] = await Location.reverseGeocodeAsync(coords);
-  //       if (rev) {
-  //         const dir = [
-  //           rev.street,
-  //           rev.streetNumber,
-  //           rev.city
-  //         ].filter(Boolean).join(", ");
-          
-  //         if (dir) {
-  //           setFormData(prev => ({ ...prev, ultimaUbicacion: dir }));
-  //         }
-  //       }
-  //     } catch (geocodeError) {
-  //       console.warn("No se pudo obtener la dirección:", geocodeError);
-  //     }
-  //   } catch (error) {
-  //     handleError(error, "obtener la ubicación");
-  //   } finally {
-  //     setLoading(prev => ({ ...prev, obteniendoUbicacion: false }));
-  //   }
-  // };
 // 12. Función mejorada para manejar la selección de imágenes
 const elegirFoto = async () => {
   try {
-    // Pedir permisos
+    console.log('[Reportes Perdidas] pedir permiso fotos...');
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert("Permiso requerido", "Necesitamos acceso a tus fotos.");
       return;
     }
 
-    // Seleccionar imagen
+    console.log('[Reportes Perdidas] abrir galería...');
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: IMAGE_MEDIA_TYPES,
       quality: 0.8,
       allowsEditing: true,
       aspect: [4, 3],
     });
 
-    if (result.canceled || !result.assets?.[0]) return;
-
-    const asset = result.assets[0];
-
-    // Validar tipo de archivo
-    if (!validarTipoImagen(asset.uri)) {
-      Alert.alert("Archivo no válido", "Por favor selecciona una imagen válida (JPG, PNG, WebP)");
+    if (result.canceled || !result.assets?.[0]) {
+      console.log('[Reportes Perdidas] selección cancelada');
       return;
     }
 
-    // Validar tamaño (límite: 10MB)
-    // const fileInfo = await FileSystem.getInfoAsync(asset.uri);
-    // const sizeInMB = (fileInfo.size || 0) / (1024 * 1024);
-    //   if (sizeInMB > 10) {
-    //   Alert.alert("Archivo muy grande", "La imagen debe ser menor a 10MB");
-    //   return;
-    // }
+    const asset = result.assets[0];
+    console.log('[Reportes Perdidas] asset seleccionado:', { uri: asset.uri, width: asset.width, height: asset.height, fileSize: (asset as any)?.fileSize, mimeType: (asset as any)?.mimeType });
+
+    // Validación relajada
+    if (!validarTipoImagen(asset.uri)) {
+      console.warn('[Reportes Perdidas] validación de imagen falló, pero se permite por configuración');
+    }
 
     // Redimensionar imagen para optimización
+    console.log('[Reportes Perdidas] procesar imagen...');
     const manipResult = await ImageManipulator.manipulateAsync(
       asset.uri,
-      [{ resize: { width: 1200 } }], // Redimensionar a un ancho máximo de 1200px
+      [{ resize: { width: 1200 } }],
       { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
     );
 
@@ -278,355 +277,255 @@ const elegirFoto = async () => {
       width: manipResult.width,
       height: manipResult.height,
     });
+    console.log('[Reportes Perdidas] foto seleccionada:', { uri: manipResult.uri, w: manipResult.width, h: manipResult.height });
   } catch (error) {
     handleError(error, "seleccionar la imagen");
   }
 };
 
- // 13. Función corregida para subir la foto
- const subirFotoSiExiste = async (reporteId: string): Promise<boolean> => {
+// 13. Función corregida para subir la foto
+const subirFotoSiExiste = async (reporteId: string): Promise<boolean> => {
   if (!foto) return true; // No hay foto para subir, pero no es un error
 
   try {
     setLoading(prev => ({ ...prev, subiendoFoto: true }));
 
-    // Validar que el archivo existe
-    const fileInfo = await FileSystem.getInfoAsync(foto.uri);
-    if (!fileInfo.exists) {
-      throw new Error("El archivo de imagen no existe");
+    const BUCKET = 'reportes-fotos';
+    const extRaw = (foto.uri.split('.').pop() || '').toLowerCase();
+    const ext = (extRaw || 'jpg').replace('jpeg', 'jpg');
+    const path = `reportes/${reporteId}/${Date.now()}.${ext}`;
+    console.log('[Reportes Perdidas] preparar subida:', { reporteId, extRaw, ext, path, plataforma: Platform.OS });
+
+    if (Platform.OS === 'web') {
+      // En web leer como Blob y subir directamente
+      console.log('[Reportes Perdidas] leyendo blob desde uri...');
+      const resp = await fetch(foto.uri);
+      if (!resp.ok) throw new Error('No se pudo leer la imagen');
+      const blob = await resp.blob();
+      const contentType = blob.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+      console.log('[Reportes Perdidas] subiendo a storage (web)...', { contentType, size: blob.size });
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, blob, { contentType, upsert: true });
+      if (uploadError) throw uploadError;
+    } else {
+      // Nativo: usar FileSystem + base64 -> ArrayBuffer
+      const fileInfo = await FileSystem.getInfoAsync(foto.uri);
+      if (!fileInfo.exists) throw new Error('El archivo de imagen no existe');
+      console.log('[Reportes Perdidas] leyendo base64 (nativo)...', { size: fileInfo.size });
+      const base64 = await FileSystem.readAsStringAsync(foto.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const arrayBuffer = base64ToArrayBuffer(base64);
+      console.log('[Reportes Perdidas] subiendo a storage (nativo)...');
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, arrayBuffer, { contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`, upsert: true });
+      if (uploadError) throw uploadError;
     }
 
-    const ext = foto.uri.split('.').pop()?.toLowerCase() || 'jpg';
-    const path = `reportes/${reporteId}/${Date.now()}.${ext}`;
-
-    // fetch para obtener el arrayBuffer directamente
-    const response = await fetch(foto.uri);
-    const arrayBuffer = await response.arrayBuffer();
-
-    // Subir a Supabase Storage
-    const { error: uploadError } = await supabase.storage
-      .from("reportes-fotos")
-      .upload(path, arrayBuffer, {
-        contentType: `image/${ext}`,
-        upsert: true,
-      });
-
-    if (uploadError) throw uploadError;
-
-    // Guardar metadatos en la base de datos
-    const { error: dbError } = await supabase.from("fotos_reportes").insert({
+    // Registrar en DB y loguear URL pública
+    console.log('[Reportes Perdidas] insert en fotos_reportes...');
+    const { error: dbError } = await supabase.from('fotos_reportes').insert({
       reporte_id: reporteId,
       ruta_storage: path,
       ancho: foto.width,
       alto: foto.height,
-      estado: "AC",
+      estado: 'AC',
     });
-
     if (dbError) throw dbError;
 
+    const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+    console.log('[Reportes Perdidas] Foto subida en:', path, 'URL:', pub?.publicUrl);
     return true;
   } catch (error) {
-    handleError(error, "subir la foto");
+    handleError(error, 'subir la foto');
     return false;
   } finally {
     setLoading(prev => ({ ...prev, subiendoFoto: false }));
   }
 };
-// 14. Función para validar el formulario
+
+// 14. Validación de formulario (incluye foto obligatoria)
 const validar = (): string[] => {
   const errores: string[] = [];
-  
-  // Validaciones básicas
-  if (!formData.nombre.trim()) {
-    errores.push("El nombre de la mascota es obligatorio.");
-  } else if (formData.nombre.trim().length < 2) {
-    errores.push("El nombre debe tener al menos 2 caracteres.");
-  }
-  
-  if (!formData.especieId) {
-    errores.push("Debés seleccionar el tipo de mascota.");
-  }
-  
-  if (!formData.ultimaUbicacion.trim()) {
-    errores.push("Ingresá una dirección o punto de referencia.");
-  }
-  
-  // Validación de recompensa
-  if (formData.recompensa.trim()) {
-    const n = Number(formData.recompensa);
-    if (Number.isNaN(n) || n < 0) {
-      errores.push("La recompensa debe ser un número ≥ 0.");
-    } else if (n > 999999) {
-      errores.push("La recompensa no puede ser mayor a $999,999.");
-    }
-  }
-  
-  // // Validación de fecha
-  // if (formData.fechaHoraPerdida.trim()) {
-  //   try {
-  //     validarFecha(formData.fechaHoraPerdida);
-  //   } catch (error: any) {
-  //     errores.push(error.message);
-  //   }
-  // }
-  
+  if (!formData.especieId) errores.push('Seleccioná el tipo de mascota.');
+  if (!foto) errores.push('Agregá una foto de la mascota.');
   return errores;
 };
 
-  // 15. Función para publicar el reporte
-  const publicar = async () => {
-    // Validar primero
-    const errores = validar();
-    if (errores.length) {
-      Alert.alert("Revisá estos campos", errores.join("\n"));
-      return;
+// 15. Publicar reporte de PERDIDAS
+const publicar = async () => {
+  console.log('[Reportes Perdidas] publicar() start', { formData, tieneFoto: !!foto });
+  const errores = validar();
+  if (errores.length) {
+    console.log('[Reportes Perdidas] validar() errores:', errores);
+    if (Platform.OS === 'web') (globalThis as any).alert?.(errores.join('\n')); else Alert.alert('Revisá estos campos', errores.join('\n'));
+    return;
+  }
+
+  try {
+    setLoading(prev => ({ ...prev, publicando: true }));
+
+    console.log('[Reportes Perdidas] auth.getSession');
+    const { data: { session }, error: sessionError } = await withTimeout((supabase.auth.getSession() as any), 7000, 'auth.getSession');
+    if (sessionError) console.warn('[Reportes Perdidas] getSession error:', sessionError);
+    let user = session?.user || null;
+    if (!user) {
+      console.log('[Reportes Perdidas] auth.getUser fallback');
+      const res: any = await withTimeout((supabase.auth.getUser() as any), 30000, 'auth.getUser');
+      user = res?.data?.user ?? null;
     }
+    if (!user) throw new Error('No estás autenticado. Iniciá sesión e intentá nuevamente.');
+    console.log('[Reportes Perdidas] user:', user.id);
 
-    // Confirmar antes de publicar
-    const confirmar = await new Promise<boolean>((resolve) => {
-      Alert.alert(
-        "¿Publicar el reporte?",
-        "Podés revisarlo una vez más o publicar ahora.",
-        [
-          { text: "Revisar", style: "cancel", onPress: () => resolve(false) },
-          { text: "Publicar ahora", style: "default", onPress: () => resolve(true) },
-        ]
-      );
-    });
-
-    if (!confirmar) return;
-
-    try {
-      setLoading(prev => ({ ...prev, publicando: true }));
-
-      // Verificar autenticación
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        Alert.alert("Autenticación", "Iniciá sesión para publicar.");
-        return;
-      }
-
-      // 1. Crear la mascota
-      const mascotaData = {
-        duenio_id: user.id,
-        nombre: formData.nombre.trim(),
-        especie_id: formData.especieId,
-        raza: formData.raza.trim() || null,
-        tamanio_id: formData.tamanioId,
-        sexo_id: formData.sexoId,
-        color: formData.color.trim() || null,
-        senias_particulares: formData.seniasParticulares.trim() || null,
-        estado: "AC",
-      };
-
-      const { data: nuevaMascota, error: mascotaError } = await supabase
-        .from("mascotas")
-        .insert(mascotaData)
-        .select("id")
-        .single();
-
-      if (mascotaError || !nuevaMascota?.id) {
-        throw new Error(mascotaError?.message || "No se pudo registrar la mascota");
-      }
-
-      // 2. Obtener IDs necesarios para el reporte (optimizado)
-      const [tipoRes, estadoRes] = await Promise.all([
-        supabase
-          .from("tipos_reportes")
-          .select("id")
-          .eq("nombre", "perdida")
-          .eq("estado", "AC")
-          .single(),
-        supabase
-          .from("estados_reportes")
-          .select("id")
-          .eq("nombre", "abierto")
-          .eq("estado", "AC")
-          .single(),
-      ]);
-
-      if (tipoRes.error || estadoRes.error || !tipoRes.data?.id || !estadoRes.data?.id) {
-        throw new Error("Faltan catálogos: tipo 'perdida' y/o estado 'abierto'.");
-      }
-
-      // 3. Obtener coordenadas mejorado
-      let coords = ubicacionActual;
-      if (!coords && formData.ultimaUbicacion.trim()) {
-        try {
-          const geocoded = await Location.geocodeAsync(formData.ultimaUbicacion.trim());
-          if (geocoded.length > 0) {
-            coords = {
-              latitude: geocoded[0].latitude,
-              longitude: geocoded[0].longitude,
-            };
-          }
-        } catch (geocodeError) {
-          console.warn("Error en geocoding:", geocodeError);
-        }
-      }
-
-      if (!coords) {
-        throw new Error("No se pudo determinar la ubicación. Por favor, intentá con una dirección más específica o usá el botón 'Mi ubicación'.");
-      }
-
-      // 4. Validar coordenadas
-      if (Math.abs(coords.latitude) > 90 || Math.abs(coords.longitude) > 180) {
-        throw new Error("Coordenadas inválidas. Revisá la ubicación ingresada.");
-      }
-
-      // 5. Preparar datos del reporte
-      const recompensaNum = formData.recompensa.trim() ? Number(formData.recompensa) : null;
-      const fechaPerdida = formData.fechaHoraPerdida.trim() 
-        ? validarFecha(formData.fechaHoraPerdida) 
-        : new Date().toISOString();
-
-       const ubicacionWKT = `POINT(${coords.longitude} ${coords.latitude})`; 
-
-      const reporteData = {
-        tipo_id: tipoRes.data.id,
-        estado_id: estadoRes.data.id,
-        mascota_id: nuevaMascota.id,
-        reportero_id: user.id,
-        titulo: `${formData.nombre.trim()} - Mascota Perdida`,
-        descripcion: formData.seniasParticulares.trim() || `Mascota ${formData.nombre.trim()} reportada como perdida`,
-        recompensa: recompensaNum,
-        visto_por_ultima_vez: fechaPerdida,
-        ubicacion: ubicacionWKT,  
-        descripcion_ubicacion: formData.descripcionUbicacion.trim() || null,
-        direccion_referencia: formData.ultimaUbicacion.trim(),
-        estado: "AC",
-      };
-
-      // 6. Crear el reporte
-      const { data: nuevoReporte, error: reporteError } = await supabase
-        .from("reportes")
-        .insert(reporteData)
-        .select("id")
-        .single();
-
-      if (reporteError || !nuevoReporte?.id) {
-        throw new Error(reporteError?.message || "No se pudo crear el reporte");
-      }
-
-      // 7. Crear seguimiento automático
-      await supabase.from("seguimientos").insert({
-        usuario_id: user.id,
-        reporte_id: nuevoReporte.id,
-        estado: "AC",
-      });
-
-      // 8. Subir foto si existe
-      if (foto) {
-        const fotoSubida = await subirFotoSiExiste(nuevoReporte.id);
-        if (!fotoSubida) {
-          console.warn("No se pudo subir la foto, pero el reporte se creó correctamente");
-        }
-      }
-
-     // Éxito
-     Alert.alert(
-      "¡Reporte creado!", 
-      "Hemos registrado tu reporte!",
-      [{ text: "OK", onPress: () => {
-        // Limpiar formulario
-        setFormData({
-          nombre: "",
-          especieId: null,
-          raza: "",
-          tamanioId: null,
-          sexoId: null,
-          color: "",
-          seniasParticulares: "",
-          ultimaUbicacion: "",
-          fechaHoraPerdida: "",
-          descripcionUbicacion: "",
-          recompensa: "",
-        });
-        setFoto(null);
-        setUbicacionActual(null);
-      }}]
+    console.log('[Reportes Perdidas] insertar mascota');
+    const mascotaData = {
+      duenio_id: user.id,
+      nombre: formData.nombre.trim() || 'Desconocido',
+      especie_id: formData.especieId,
+      raza: formData.raza.trim() || null,
+      tamanio_id: formData.tamanioId,
+      sexo_id: formData.sexoId,
+      color: formData.color.trim() || null,
+      senias_particulares: formData.seniasParticulares.trim() || null,
+      estado: 'AC',
+    };
+    const { data: nuevaMascota, error: mascotaError } = await withTimeout(
+      (supabase.from('mascotas').insert(mascotaData).select('id').single() as any),
+      20000,
+      'insert mascotas'
     );
+    if (mascotaError || !nuevaMascota?.id) throw new Error(mascotaError?.message || 'No se pudo registrar la mascota');
+    console.log('[Reportes Perdidas] mascota creada:', nuevaMascota.id);
 
-  } catch (error) {
-    handleError(error, "publicar el reporte");
+    console.log('[Reportes Perdidas] catálogos');
+    const [tipoRes, estadoRes] = await Promise.all([
+      withTimeout((supabase.from('tipos_reportes').select('id').eq('nombre', 'perdida').eq('estado', 'AC').maybeSingle() as any), 15000, 'tipos_reportes'),
+      withTimeout((supabase.from('estados_reportes').select('id').eq('nombre', 'abierto').eq('estado', 'AC').maybeSingle() as any), 15000, 'estados_reportes'),
+    ]);
+    if (!tipoRes?.data?.id || !estadoRes?.data?.id) throw new Error('Faltan catálogos requeridos');
+
+    console.log('[Reportes Perdidas] ubicación');
+    // Prioridad: texto -> ubicación actual -> error
+    let coords: LatLng | null = null;
+    const parsed = parseCoordenadas(formData.ultimaUbicacion);
+    if (parsed) {
+      coords = parsed;
+      console.log('[Reportes Perdidas] usando coordenadas ingresadas:', coords);
+    } else if (ubicacionActual) {
+      coords = ubicacionActual;
+      console.log('[Reportes Perdidas] usando ubicacionActual:', coords);
+    } else {
+      const { status } = await withTimeout(Location.requestForegroundPermissionsAsync(), 10000, 'permiso ubicación');
+      if (status !== 'granted') throw new Error('Permiso de ubicación denegado');
+      const pos = await withTimeout(Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }), 15000, 'getCurrentPositionAsync');
+      coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+      console.log('[Reportes Perdidas] usando ubicación del GPS:', coords);
+    }
+    if (!coords) throw new Error('No se pudo determinar la ubicación');
+    const ubicacionWKT = `POINT(${coords.longitude} ${coords.latitude})`;
+
+    console.log('[Reportes Perdidas] insertar reporte');
+    const { data: nuevoReporte, error: reporteError } = await withTimeout(
+      (supabase
+         .from('reportes')
+         .insert({
+           tipo_id: tipoRes.data.id,
+           estado_id: estadoRes.data.id,
+           mascota_id: nuevaMascota.id,
+           reportero_id: user.id,
+           titulo: `${formData.nombre.trim() || 'Mascota'} - Perdida`,
+           descripcion: formData.seniasParticulares.trim() || `Mascota perdida reportada por usuario`,
+           visto_por_ultima_vez: formData.fechaHoraPerdida.trim() ? validarFecha(formData.fechaHoraPerdida) : new Date().toISOString(),
+           ubicacion: ubicacionWKT,
+           descripcion_ubicacion: formData.descripcionUbicacion.trim() || null,
+           direccion_referencia: formData.ultimaUbicacion.trim(),
+           estado: 'AC',
+         })
+        .select('id')
+        .single() as any),
+       20000,
+       'insert reportes'
+     );
+    if (reporteError || !nuevoReporte?.id) throw new Error(reporteError?.message || 'No se pudo crear el reporte');
+    console.log('[Reportes Perdidas] reporte creado:', nuevoReporte.id);
+
+    console.log('[Reportes Perdidas] seguimiento');
+    await withTimeout(
+      (supabase.from('seguimientos').insert({ usuario_id: user.id, reporte_id: nuevoReporte.id, estado: 'AC' }) as any),
+       10000,
+       'insert seguimientos'
+     );
+
+    console.log('[Reportes Perdidas] estado foto antes de subir:', !!foto, foto?.uri);
+    const ok = await withTimeout(subirFotoSiExiste(nuevoReporte.id), 30000, 'subir foto');
+    console.log('[Reportes Perdidas] foto subida:', ok);
+
+    if (Platform.OS === 'web') (globalThis as any).alert?.('¡Reporte publicado!'); else Alert.alert('¡Gracias!', 'Tu reporte de mascota perdida fue publicado.');
+
+    // Reset
+    setFormData({
+      nombre: '', especieId: null, raza: '', tamanioId: null, sexoId: null, color: '', seniasParticulares: '', ultimaUbicacion: '', fechaHoraPerdida: '', descripcionUbicacion: '', ubicacion: '', recompensa: ''
+    });
+    setFoto(null);
+    setUbicacionActual(null);
+  } catch (e) {
+    handleError(e, 'publicar el reporte');
   } finally {
     setLoading(prev => ({ ...prev, publicando: false }));
   }
 };
- // 16. Estado de carga combinado
- const estaCargando = loading.catalogos || loading.publicando || loading.subiendoFoto || loading.obteniendoUbicacion;
 
- // 17. Mostrar carga si se están cargando los catálogos
- if (loading.catalogos) {
-   return (
-     <ThemedView style={styles.container}>
-       <View style={styles.loadingContainer}>
-         <ActivityIndicator size="large" color="#FF6B6B" />
-         <ThemedText style={styles.loadingText}>Cargando formulario...</ThemedText>
-       </View>
-     </ThemedView>
-   );
- }
+const estaCargando = loading.catalogos || loading.publicando || loading.subiendoFoto || loading.obteniendoUbicacion;
 
- // 18. Renderizado del componente 
- return (
+if (loading.catalogos) {
+  return (
+    <ThemedView style={styles.container}>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4ECDC4" />
+        <ThemedText style={styles.loadingText}>Cargando formulario...</ThemedText>
+      </View>
+    </ThemedView>
+  );
+}
+
+return (
   <ThemedView style={styles.container}>
     <ThemedView style={styles.header}>
-      <IconSymbol size={40} name="exclamationmark.triangle.fill" color="#FF6B6B" />
-      <ThemedText type="title" style={styles.title}>
-        Reportar Mascota Perdida
-      </ThemedText>
-      {/* <ThemedText style={styles.subtitle}>
-        Compartí todos los detalles para ayudar a que tu mascota vuelva a casa
-      </ThemedText> */}
+      <IconSymbol size={40} name="exclamationmark.circle.fill" color="#4ECDC4" />
+      <ThemedText type="title" style={styles.title}>Reportar Mascota Perdida</ThemedText>
     </ThemedView>
 
-    <ScrollView
-      style={styles.content}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
-      {/* Sección: Mascota */}
+    <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.formSection}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Información:
-        </ThemedText>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>Descripción</ThemedText>
 
-        {/* Nombre */}
         <View style={styles.formField}>
-          <ThemedText style={styles.fieldLabel}>Nombre *</ThemedText>
+          <ThemedText style={styles.fieldLabel}>Nombre</ThemedText>
           <TextInput
-            style={[
-              styles.textInput, 
-              !formData.nombre.trim() && styles.textInputError
-            ]}
-            placeholder="Ej: Luna, Max..."
+            style={styles.textInput}
+            placeholder="Ej: Luna"
             value={formData.nombre}
-            onChangeText={(texto) => 
-              setFormData(prev => ({ ...prev, nombre: texto }))
+            onChangeText={(t) => setFormData((p) => ({ ...p, nombre: t }))
             }
             editable={!loading.publicando}
-            maxLength={50} // Límite de caracteres
+            maxLength={50}
           />
         </View>
 
-        {/* Selectores de catálogos */}
         <Selector
           titulo="Tipo de mascota"
           opciones={catalogos.especies}
           valorSeleccionado={formData.especieId}
-          onSeleccionar={(especieId) => 
-            setFormData(prev => ({ ...prev, especieId }))
+          onSeleccionar={(especieId) => setFormData((p) => ({ ...p, especieId }))
           }
-          obligatorio={true}
+          obligatorio
         />
 
         <Selector
           titulo="Tamaño"
           opciones={catalogos.tamanios}
           valorSeleccionado={formData.tamanioId}
-          onSeleccionar={(tamanioId) => 
-            setFormData(prev => ({ ...prev, tamanioId }))
+          onSeleccionar={(tamanioId) => setFormData((p) => ({ ...p, tamanioId }))
           }
         />
 
@@ -634,34 +533,17 @@ const validar = (): string[] => {
           titulo="Sexo"
           opciones={catalogos.sexos}
           valorSeleccionado={formData.sexoId}
-          onSeleccionar={(sexoId) => 
-            setFormData(prev => ({ ...prev, sexoId }))
+          onSeleccionar={(sexoId) => setFormData((p) => ({ ...p, sexoId }))
           }
         />
-
-        {/* Resto de campos del formulario */}
-        <View style={styles.formField}>
-          <ThemedText style={styles.fieldLabel}>Raza</ThemedText>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Ej: Labrador / Siamés / Mestizo"
-            value={formData.raza}
-            onChangeText={(texto) => 
-              setFormData(prev => ({ ...prev, raza: texto }))
-            }
-            editable={!loading.publicando}
-            maxLength={100}
-          />
-        </View>
 
         <View style={styles.formField}>
           <ThemedText style={styles.fieldLabel}>Color principal</ThemedText>
           <TextInput
             style={styles.textInput}
-            placeholder="Ej: Negro con blanco"
+            placeholder="Ej: Marrón con blanco"
             value={formData.color}
-            onChangeText={(t) => 
-              setFormData(prev => ({ ...prev, color: t }))
+            onChangeText={(t) => setFormData((p) => ({ ...p, color: t }))
             }
             editable={!loading.publicando}
             maxLength={100}
@@ -674,10 +556,9 @@ const validar = (): string[] => {
             style={[styles.textInput, styles.textArea]}
             multiline
             numberOfLines={4}
-            placeholder="Collar, cicatrices, marcas distintivas..."
+            placeholder="Collar, placa, heridas, cicatrices..."
             value={formData.seniasParticulares}
-            onChangeText={(t) => 
-              setFormData(prev => ({ ...prev, seniasParticulares: t }))
+            onChangeText={(t) => setFormData((p) => ({ ...p, seniasParticulares: t }))
             }
             editable={!loading.publicando}
             maxLength={500}
@@ -685,201 +566,94 @@ const validar = (): string[] => {
         </View>
       </View>
 
-      {/* Sección: Ubicación y Fecha */}
       <View style={styles.formSection}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Ubicación y Fecha
-        </ThemedText>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>Ubicación y Fecha</ThemedText>
 
-        {/* Ubicación */}
         <View style={styles.formField}>
-          <View style={styles.ubicacionHeader}>
-            <ThemedText style={styles.fieldLabel}>
-              Ubicación donde se perdió:
-            </ThemedText>
-            {/* <TouchableOpacity
-              style={styles.ubicacionButton}
-              //onPress={solicitarMiUbicacion}
-              onPress={validarUbicacionIngresada}
-              disabled={loading.obteniendoUbicacion || loading.publicando}
-            >
-              {loading.obteniendoUbicacion ? (
-                <ActivityIndicator size="small" color="#FF6B6B" />
-              ) : (
-                //<IconSymbol size={16} name="location.fill" color="#FF6B6B" />
-                <IconSymbol size={16} name="checkmark.circle.fill" color="#FF6B6B" />
-              )}
-              <ThemedText style={styles.ubicacionButtonText}>
-                {loading.obteniendoUbicacion ? "Validando..." : "Mi ubicación"}
-              </ThemedText>
-            </TouchableOpacity> */}
-          </View>
-          <TextInput
-            style={[
-              styles.textInput, 
-              !formData.ultimaUbicacion.trim() && styles.textInputError
-            ]}
-            placeholder="Ej: Bv. San Juan 500, Córdoba"
-            value={formData.ultimaUbicacion}
-            onChangeText={(t) => 
-              setFormData(prev => ({ ...prev, ultimaUbicacion: t }))
-            }
-            editable={!loading.publicando}
-            maxLength={200}
+          <ThemedText style={styles.fieldLabel}>Seleccioná la ubicación en el mapa</ThemedText>
+          <MiniMapaSelector
+            value={coordsForMap}
+            onChange={(c) => setFormData(p => ({ ...p, ultimaUbicacion: `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` }))}
+            height={220}
+            initialCenter={coordsForMap ?? (ubicacionActual ? { lat: ubicacionActual.latitude, lng: ubicacionActual.longitude } : undefined)}
           />
-          <TouchableOpacity
-            style={styles.ubicacionButton}
-            onPress={validarUbicacionIngresada}
-            disabled={loading.obteniendoUbicacion || loading.publicando}
-          >
-              {loading.obteniendoUbicacion ? (
-              <ActivityIndicator size="small" color="#FF6B6B" />
-            ) : (
-              <ThemedText style={styles.ubicacionButtonText}>Validar ubicación</ThemedText>
-            )}
+          <ThemedText style={styles.uploadingText}>Tocá el mapa para establecer latitud y longitud.</ThemedText>
+          <TouchableOpacity style={styles.ubicacionButton} onPress={solicitarMiUbicacion} disabled={loading.publicando || loading.obteniendoUbicacion}>
+            <ThemedText style={styles.ubicacionButtonText}>{loading.obteniendoUbicacion ? 'Obteniendo ubicación...' : 'Usar mi ubicación actual'}</ThemedText>
           </TouchableOpacity>
         </View>
 
-        {/* Descripción de la ubicación */}
         <View style={styles.formField}>
-          <ThemedText style={styles.fieldLabel}>
-            Descripción de la ubicación (opcional)
-          </ThemedText>
+          <ThemedText style={styles.fieldLabel}>Descripción de la ubicación (opcional)</ThemedText>
           <TextInput
             style={[styles.textInput, styles.textArea]}
             multiline
             numberOfLines={3}
-            placeholder="Ej: Frente al supermercado, cerca del parque central..."
+            placeholder="Ej: Cerca del parque central, en la plaza..."
             value={formData.descripcionUbicacion}
-            onChangeText={(t) => 
-              setFormData(prev => ({ ...prev, descripcionUbicacion: t }))
+            onChangeText={(t) => setFormData((p) => ({ ...p, descripcionUbicacion: t }))
             }
             editable={!loading.publicando}
             maxLength={300}
           />
         </View>
 
-        {/* Fecha/hora de pérdida */}
         <View style={styles.formField}>
-          <ThemedText style={styles.fieldLabel}>
-            Fecha/hora aproximada (opcional)
-          </ThemedText>
+          <ThemedText style={styles.fieldLabel}>Fecha/hora de la pérdida (opcional)</ThemedText>
           <TextInput
             style={styles.textInput}
-            placeholder="Ej: 2024-12-15 16:00 o 15/12/2024"
+            placeholder="Ej: 2025-08-08 15:00 o 08/08/2025"
             value={formData.fechaHoraPerdida}
-            onChangeText={(t) => 
-              setFormData(prev => ({ ...prev, fechaHoraPerdida: t }))
+            onChangeText={(t) => setFormData((p) => ({ ...p, fechaHoraPerdida: t }))
             }
             editable={!loading.publicando}
           />
-          <ThemedText style={styles.helpText}>
-            Formatos: YYYY-MM-DD HH:MM, DD/MM/YYYY, etc.
-          </ThemedText>
-        </View>
-
-        {/* Campo de recompensa mejorado */}
-        <View style={styles.formField}>
-          <ThemedText style={styles.fieldLabel}>
-            Recompensa (opcional)
-          </ThemedText>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Ej: 5000"
-            value={formData.recompensa}
-            onChangeText={(t) => 
-              setFormData(prev => ({ ...prev, recompensa: t.replace(/[^0-9]/g, '') }))
-            }
-            editable={!loading.publicando}
-            keyboardType="numeric"
-            maxLength={7}
-          />
-          <ThemedText style={styles.helpText}>
-            Monto en pesos argentinos (máximo $999,999)
-          </ThemedText>
         </View>
       </View>
 
-      {/* Sección: Fotografía */}
       <View style={styles.formSection}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Fotografía
-        </ThemedText>
-
+        <ThemedText type="subtitle" style={styles.sectionTitle}>Fotografía (obligatoria)</ThemedText>
         {foto ? (
           <View style={styles.photoPreview}>
-            <Image
-              source={{ uri: foto.uri }}
-              style={styles.photoImage}
-              contentFit="cover"
-              transition={200}
-            />
+            <Image source={{ uri: foto.uri }} style={styles.photoImage} contentFit="cover" transition={200} />
             <View style={styles.photoButtonsRow}>
-              <TouchableOpacity 
-                style={styles.secondaryButton} 
-                onPress={elegirFoto}
-                disabled={loading.publicando}
-              >
-                <ThemedText style={styles.secondaryButtonText}>
-                  Cambiar foto
-                </ThemedText>
+              <TouchableOpacity style={styles.secondaryButton} onPress={elegirFoto} disabled={loading.publicando}>
+                <ThemedText style={styles.secondaryButtonText}>Cambiar foto</ThemedText>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.secondaryButton, styles.dangerOutline]}
-                onPress={() => setFoto(null)}
-                disabled={loading.publicando}
-              >
-                <ThemedText 
-                  style={[styles.secondaryButtonText, styles.dangerOutlineText]}
-                >
-                  Quitar foto
-                </ThemedText>
+              <TouchableOpacity style={[styles.secondaryButton, styles.dangerOutline]} onPress={() => setFoto(null)} disabled={loading.publicando}>
+                <ThemedText style={[styles.secondaryButtonText, styles.dangerOutlineText]}>Quitar foto</ThemedText>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
-          <TouchableOpacity 
-            style={styles.photoPlaceholder} 
-            onPress={elegirFoto}
-            disabled={loading.publicando}
-          >
+          <TouchableOpacity style={styles.photoPlaceholder} onPress={elegirFoto} disabled={loading.publicando}>
             <IconSymbol size={50} name="camera.fill" color="#999" />
-            <ThemedText style={styles.photoText}>
-              Agregar foto de la mascota
-            </ThemedText>
-            <ThemedText style={styles.photoSubtext}>
-              Una foto reciente ayuda muchísimo (máx. 10MB)
-            </ThemedText>
+            <ThemedText style={styles.photoText}>Agregar foto de la mascota (obligatorio)</ThemedText>
+            <ThemedText style={styles.photoSubtext}>Ayuda a identificar a la mascota</ThemedText>
           </TouchableOpacity>
         )}
 
         {loading.subiendoFoto && (
           <View style={styles.uploadingIndicator}>
-            <ActivityIndicator size="small" color="#FF6B6B" />
-            <ThemedText style={styles.uploadingText}>
-              Subiendo foto...
-            </ThemedText>
+            <ActivityIndicator size="small" color="#4ECDC4" />
+            <ThemedText style={styles.uploadingText}>Subiendo foto...</ThemedText>
           </View>
         )}
       </View>
 
-      {/* Botón de enviar */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          style={[
-            styles.submitButton, 
-            (estaCargando || !formData.nombre.trim() || !formData.especieId || !formData.ultimaUbicacion.trim()) && 
-              styles.submitButtonDisabled
-          ]}
-          onPress={publicar}
-          disabled={estaCargando || !formData.nombre.trim() || !formData.especieId || !formData.ultimaUbicacion.trim()}
+          style={[styles.submitButton, (estaCargando || !formData.especieId || !foto) && styles.submitButtonDisabled]}
+          onPress={() => {
+            console.log('[Reportes Perdidas] Botón Publicar presionado', { estaCargando, especieId: formData.especieId, tieneFoto: !!foto });
+            publicar();
+          }}
+          disabled={estaCargando || !formData.especieId || !foto}
         >
           {loading.publicando ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <ThemedText style={styles.submitButtonText}>
-              Publicar Reporte
-            </ThemedText>
+            <ThemedText style={styles.submitButtonText}>Publicar Perdida</ThemedText>
           )}
         </TouchableOpacity>
       </View>
@@ -889,293 +663,81 @@ const validar = (): string[] => {
 }
 
 function Selector({
-titulo,
-opciones,
-valorSeleccionado,
-onSeleccionar,
-placeholder = "Seleccionar...",
-obligatorio = false,
+  titulo,
+  opciones,
+  valorSeleccionado,
+  onSeleccionar,
+  placeholder = 'Seleccionar...',
+  obligatorio = false,
 }: {
-titulo: string;
-opciones: { id: number; nombre: string }[];
-valorSeleccionado: number | null;
-onSeleccionar: (id: number) => void;
-placeholder?: string;
-obligatorio?: boolean;
+  titulo: string;
+  opciones: { id: number; nombre: string }[];
+  valorSeleccionado: number | null;
+  onSeleccionar: (id: number) => void;
+  placeholder?: string;
+  obligatorio?: boolean;
 }) {
-if (opciones.length === 0) {
+  if (opciones.length === 0) {
+    return (
+      <View style={styles.formField}>
+        <ThemedText style={styles.fieldLabel}>{titulo} {obligatorio && '*'}</ThemedText>
+        <View style={styles.selectorEmpty}>
+          <ThemedText style={styles.selectorEmptyText}>{placeholder}</ThemedText>
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={styles.formField}>
-      <ThemedText style={styles.fieldLabel}>
-        {titulo} {obligatorio && "*"}
-      </ThemedText>
-      <View style={styles.selectorEmpty}>
-        <ThemedText style={styles.selectorEmptyText}>
-          {placeholder}
-        </ThemedText>
-      </View>
+      <ThemedText style={styles.fieldLabel}>{titulo} {obligatorio && '*'}</ThemedText>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorContainer}>
+        {opciones.map(op => (
+          <TouchableOpacity key={op.id} style={[styles.selectorOption, valorSeleccionado === op.id && styles.selectorOptionSelected]} onPress={() => onSeleccionar(op.id)}>
+            <ThemedText style={[styles.selectorOptionText, valorSeleccionado === op.id && styles.selectorOptionTextSelected]}>{op.nombre}</ThemedText>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
 }
 
-return (
-  <View style={styles.formField}>
-    <ThemedText style={styles.fieldLabel}>
-      {titulo} {obligatorio && "*"}
-    </ThemedText>
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.selectorContainer}
-    >
-      {opciones.map((op) => (
-        <TouchableOpacity
-          key={op.id}
-          style={[
-            styles.selectorOption,
-            valorSeleccionado === op.id && styles.selectorOptionSelected,
-          ]}
-          onPress={() => onSeleccionar(op.id)}
-        >
-          <ThemedText
-            style={[
-              styles.selectorOptionText,
-              valorSeleccionado === op.id && styles.selectorOptionTextSelected,
-            ]}
-          >
-            {op.nombre}
-          </ThemedText>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
-  </View>
-);
-}
-
-// Estilos actualizados con nuevos estilos para helpText
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    paddingTop: Platform.OS === "ios" ? 60 : 40 
-  },
-  loadingContainer: { 
-    flex: 1, 
-    justifyContent: "center", 
-    alignItems: "center" 
-  },
-  loadingText: { 
-    marginTop: 10, 
-    fontSize: 16, 
-    opacity: 0.7 
-  },
-  header: { 
-    alignItems: "center", 
-    paddingHorizontal: 20, 
-    paddingBottom: 20 
-  },
-  title: { 
-    fontSize: 24, 
-    fontWeight: "bold", 
-    color: "#FF6B6B", 
-    marginTop: 10, 
-    textAlign: "center" 
-  },
-  subtitle: { 
-    fontSize: 14, 
-    marginTop: 10, 
-    opacity: 0.7, 
-    textAlign: "center", 
-    paddingHorizontal: 10 
-  },
-  content: { 
-    flex: 1, 
-    paddingHorizontal: 20 
-  },
-  formSection: { 
-    marginBottom: 25 
-  },
-  sectionTitle: { 
-    marginBottom: 15, 
-    color: "#333", 
-    fontWeight: "600" 
-  },
-  formField: { 
-    marginBottom: 15 
-  },
-  fieldLabel: { 
-    fontSize: 16, 
-    fontWeight: "600", 
-    marginBottom: 8 
-  },
-  textInput: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 8,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-    fontSize: 16,
-    color: "#000",
-  },
-  textInputError: { 
-    borderColor: "#FF6B6B", 
-    borderWidth: 2 
-  },
-  textArea: { 
-    minHeight: 80, 
-    textAlignVertical: "top" 
-  },
-
-  helpText: {
-    fontSize: 12,
-    color: "#6C757D",
-    marginTop: 5,
-    fontStyle: "italic",
-  },
-  ubicacionHeader: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    alignItems: "center", 
-    marginBottom: 8 
-  },
-  ubicacionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF5F5",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: "#FF6B6B",
-  },
-  ubicacionButtonText: { 
-    color: "#FF6B6B", 
-    fontSize: 12, 
-    marginLeft: 5, 
-    fontWeight: "500" 
-  },
-  selectorContainer: { 
-    paddingVertical: 5 
-  },
-  selectorOption: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-  },
-  selectorOptionSelected: { 
-    backgroundColor: "#FF6B6B", 
-    borderColor: "#FF6B6B" 
-  },
-  selectorOptionText: { 
-    fontSize: 14, 
-    color: "#6C757D" 
-  },
-  selectorOptionTextSelected: { 
-    color: "white", 
-    fontWeight: "600" 
-  },
-  selectorEmpty: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 8,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-  },
-  selectorEmptyText: { 
-    color: "#6C757D", 
-    fontSize: 14, 
-    fontStyle: "italic" 
-  },
-  photoPlaceholder: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    padding: 40,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#E9ECEF",
-    borderStyle: "dashed",
-  },
-  photoPreview: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-  },
-  photoImage: {
-    width: "100%",
-    height: 200,
-  },
-  photoText: { 
-    fontSize: 16, 
-    fontWeight: "600", 
-    marginTop: 10 
-  },
-  photoSubtext: { 
-    fontSize: 12, 
-    opacity: 0.6, 
-    textAlign: "center", 
-    marginTop: 5 
-  },
-  photoButtonsRow: { 
-    flexDirection: "row", 
-    justifyContent: "center", 
-    padding: 10,
-    gap: 10,
-  },
-  uploadingIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-  },
-  uploadingText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#666',
-  },
-  secondaryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-    backgroundColor: "#fff",
-    flex: 1,
-    alignItems: 'center',
-  },
-  secondaryButtonText: { 
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-  },
-  dangerOutline: { 
-    borderColor: "#FF6B6B" 
-  },
-  dangerOutlineText: { 
-    color: "#FF6B6B", 
-    fontWeight: "600" 
-  },
-  buttonContainer: { 
-    paddingVertical: 20,
-    paddingBottom: 40,
-  },
-  submitButton: {
-    backgroundColor: "#FF6B6B",
-    borderRadius: 12,
-    padding: 18,
-    alignItems: "center",
-  },
-  submitButtonDisabled: { 
-    backgroundColor: "#CCC", 
-    opacity: 0.6 
-  },
-  submitButtonText: { 
-    color: "#fff", 
-    fontSize: 16, 
-    fontWeight: "bold" 
-  },
+  container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 10, fontSize: 16, opacity: 0.7 },
+  header: { alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#4ECDC4', marginTop: 10, textAlign: 'center' },
+  content: { flex: 1, paddingHorizontal: 20 },
+  formSection: { marginBottom: 25 },
+  sectionTitle: { marginBottom: 15, color: '#333', fontWeight: '600' },
+  formField: { marginBottom: 15 },
+  fieldLabel: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
+  textInput: { backgroundColor: '#F8F9FA', borderRadius: 8, padding: 15, borderWidth: 1, borderColor: '#E9ECEF', fontSize: 16, color: '#000' },
+  textInputError: { borderColor: '#4ECDC4', borderWidth: 2 },
+  textArea: { minHeight: 80, textAlignVertical: 'top' },
+  selectorContainer: { paddingVertical: 5 },
+  selectorOption: { backgroundColor: '#F8F9FA', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, marginRight: 10, borderWidth: 1, borderColor: '#E9ECEF' },
+  selectorOptionSelected: { backgroundColor: '#4ECDC4', borderColor: '#4ECDC4' },
+  selectorOptionText: { fontSize: 14, color: '#6C757D' },
+  selectorOptionTextSelected: { color: 'white', fontWeight: '600' },
+  selectorEmpty: { backgroundColor: '#F8F9FA', borderRadius: 8, padding: 15, borderWidth: 1, borderColor: '#E9ECEF' },
+  selectorEmptyText: { color: '#6C757D', fontSize: 14, fontStyle: 'italic' },
+  photoPlaceholder: { backgroundColor: '#F8F9FA', borderRadius: 12, padding: 40, alignItems: 'center', borderWidth: 2, borderColor: '#E9ECEF', borderStyle: 'dashed' },
+  photoPreview: { backgroundColor: '#F8F9FA', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#E9ECEF' },
+  photoImage: { width: '100%', height: 200 },
+  photoText: { fontSize: 16, fontWeight: '600', marginTop: 10 },
+  photoSubtext: { fontSize: 12, opacity: 0.6, textAlign: 'center', marginTop: 5 },
+  photoButtonsRow: { flexDirection: 'row', justifyContent: 'center', padding: 10, gap: 10 },
+  uploadingIndicator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  uploadingText: { marginLeft: 8, fontSize: 14, color: '#666' },
+  secondaryButton: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#E9ECEF', backgroundColor: '#fff', flex: 1, alignItems: 'center' },
+  secondaryButtonText: { fontSize: 14, color: '#333', fontWeight: '500' },
+  dangerOutline: { borderColor: '#4ECDC4' },
+  dangerOutlineText: { color: '#4ECDC4', fontWeight: '600' },
+  ubicacionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFFFFD', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15, borderWidth: 1, borderColor: '#4ECDC4', marginTop: 8 },
+  ubicacionButtonText: { color: '#4ECDC4', fontSize: 12, marginLeft: 5, fontWeight: '500' },
+  buttonContainer: { paddingVertical: 20, paddingBottom: 40 },
+  submitButton: { backgroundColor: '#4ECDC4', borderRadius: 12, padding: 18, alignItems: 'center' },
+  submitButtonDisabled: { backgroundColor: '#CCC', opacity: 0.6 },
+  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });
