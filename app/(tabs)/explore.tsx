@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/Theme';
+import { useAppFonts } from '@/hooks/useFonts';
+import { supabase } from '@/lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Image,
   ActivityIndicator,
   Alert,
+  Image,
   RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '@/lib/supabase';
-import { useAppFonts } from '@/hooks/useFonts';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '@/constants/Theme';
 
 interface Reporte {
   id: string;
@@ -73,7 +73,7 @@ const ReportesMascotasPerdidas = () => {
         .select('id')
         .eq('nombre', filtroActivo === 'perdidas' ? 'perdida' : 'encontrada')
         .eq('estado', 'AC')
-        .single();
+        .maybeSingle();
 
       if (!tipoReporte) {
         console.log('No se encontró el tipo de reporte');
@@ -154,15 +154,22 @@ const ReportesMascotasPerdidas = () => {
     }
   };
 
+  const getStoragePublicUrl = (path?: string | null): string | null => {
+    if (!path) return null;
+    // Si ya es URL completa, devolverla
+    if (/^https?:\/\//i.test(path)) return path;
+    const { data } = supabase.storage.from('reportes-fotos').getPublicUrl(path);
+    return data?.publicUrl || null;
+  };
+
   const obtenerImagenMascota = (reporte: Reporte): string | null => {
     // Priorizar foto principal de la mascota
-    if (reporte.mascota?.foto_principal_url) {
-      return reporte.mascota.foto_principal_url;
-    }
+    const principal = getStoragePublicUrl(reporte.mascota?.foto_principal_url || null);
+    if (principal) return principal;
     
     // Si no hay foto principal, usar la primera foto del reporte
     if (reporte.fotos_reportes && reporte.fotos_reportes.length > 0) {
-      return reporte.fotos_reportes[0].ruta_storage;
+      return getStoragePublicUrl(reporte.fotos_reportes[0].ruta_storage);
     }
     
     return null;
