@@ -1,130 +1,222 @@
 // Importaciones necesarias para React y componentes de React Native
+import { useRouter } from "expo-router";
 import React from "react";
-import { StyleSheet, View } from "react-native";
-// Componentes personalizados de la aplicación
-import { ThemedText } from "@/components/ThemedText"; // Texto que se adapta al tema claro/oscuro
-import { ThemedView } from "@/components/ThemedView"; // Vista que se adapta al tema claro/oscuro
-import { IconSymbol } from "@/components/ui/IconSymbol"; // Componente para mostrar íconos
-import MapaListado from "@/components/MapaListado";
+import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
 
-// Componente principal de la pantalla del mapa (pantalla de inicio)
+// Componentes personalizados de la aplicación
+import MapaListado from "@/components/MapaListado"; // Componente del mapa interactivo
+import { ThemedText } from "@/components/ThemedText"; // Componente de texto que se adapta al tema
+import { ThemedView } from "@/components/ThemedView"; // Componente de vista que se adapta al tema
+import { IconSymbol } from "@/components/ui/IconSymbol"; // Componente para mostrar íconos
+
+/**
+ * Pantalla principal de la aplicación que muestra el mapa y acciones rápidas
+ * Esta pantalla es la entrada principal de la aplicación y muestra un mapa interactivo
+ * con reportes de mascotas perdidas y encontradas, además de acciones rápidas para
+ * reportar mascotas perdidas o encontradas.
+ */
 export default function MapScreen() {
+  // Hook para la navegación entre pantallas
+  const router = useRouter();
+
+  /**
+   * Navega a la pantalla de reportar mascota perdida
+   * Esta función es llamada cuando el usuario presiona el botón de "Reportar Perdida"
+   */
+  const navigateToLostPets = () => {
+    router.push("/(tabs)/reportes-perdidas");
+  };
+
+  /**
+   * Navega a la pantalla de reportar mascota encontrada
+   * Esta función es llamada cuando el usuario presiona el botón de "Reportar Encontrada"
+   */
+  const navigateToFoundPets = () => {
+    router.push("/(tabs)/reporte-encontradas");
+  };
+
   return (
-    // Contenedor principal que ocupa toda la pantalla
+    // Contenedor principal de la pantalla
     <ThemedView style={styles.container}>
-      {/* Sección del encabezado con branding de RadarPet */}
+      {/* Encabezado con el título de la aplicación */}
       <ThemedView style={styles.header}>
-        {/* Título principal de la aplicación */}
         <ThemedText type="title" style={styles.title}>
           RadarPet
         </ThemedText>
-        {/* Subtítulo descriptivo de la funcionalidad */}
         <ThemedText style={styles.subtitle}>
           Encuentra a tu mascota perdida
         </ThemedText>
       </ThemedView>
 
-      {/* Mapa interactivo con reportes */}
+      {/* Sección del mapa interactivo */}
       <View style={styles.mapContainer}>
         <MapaListado />
       </View>
 
-      {/* Sección de acciones rápidas para el usuario */}
+      {/* Sección de acciones rápidas */}
       <ThemedView style={styles.quickActions}>
-        {/* Título de la sección de acciones */}
         <ThemedText type="subtitle" style={styles.quickActionsTitle}>
           Acciones Rápidas
         </ThemedText>
-        {/* Contenedor horizontal para los botones de acción */}
+
+        {/* Contenedor de botones de acción */}
         <View style={styles.actionButtons}>
           {/* Botón para reportar mascota perdida */}
-          <View style={styles.actionButton}>
-            {/* Ícono de alerta para mascotas perdidas */}
+          <TouchableOpacity
+            style={[styles.actionButton, styles.lostButton]}
+            onPress={navigateToLostPets}
+            activeOpacity={0.8}
+          >
             <IconSymbol
-              size={32}
+              size={28}
               name="exclamationmark.triangle.fill"
-              color="#FF6B6B"
+              color="#FFFFFF"
             />
-            {/* Texto descriptivo del botón */}
-            <ThemedText style={styles.actionText}>Reportar Perdida</ThemedText>
-          </View>
+            <ThemedText style={[styles.actionText, styles.lostButtonText]}>
+              Reportar Perdida
+            </ThemedText>
+          </TouchableOpacity>
+
           {/* Botón para reportar mascota encontrada */}
-          <View style={styles.actionButton}>
-            {/* Ícono de check para mascotas encontradas */}
+          <TouchableOpacity
+            style={[styles.actionButton, styles.foundButton]}
+            onPress={navigateToFoundPets}
+            activeOpacity={0.8}
+          >
             <IconSymbol
-              size={32}
+              size={28}
               name="checkmark.circle.fill"
-              color="#4ECDC4"
+              color="#FFFFFF"
             />
-            {/* Texto descriptivo del botón */}
-            <ThemedText style={styles.actionText}>
+            <ThemedText style={[styles.actionText, styles.foundButtonText]}>
               Reportar Encontrada
             </ThemedText>
-          </View>
+          </TouchableOpacity>
         </View>
       </ThemedView>
     </ThemedView>
   );
 }
 
-// Objeto de estilos para todos los componentes de la pantalla
+// Estilos de la pantalla
 const styles = StyleSheet.create({
-  // Contenedor principal que ocupa toda la pantalla
+  // Contenedor principal
   container: {
-    flex: 1, // Ocupa todo el espacio disponible
-    paddingTop: 60, // Espacio superior para evitar la barra de estado
+    flex: 1,
+    paddingTop: 60,
+    backgroundColor: "#F8FAFB",
   },
-  // Estilo para la sección del encabezado
+
+  // Estilos del encabezado
   header: {
-    alignItems: "center", // Centra los elementos horizontalmente
-    paddingHorizontal: 20, // Espaciado horizontal interno
-    paddingBottom: 20, // Espaciado inferior
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 15,
   },
-  // Estilo para el título principal de RadarPet
+
+  // Estilos del título principal
   title: {
-    fontSize: 32, // Tamaño de fuente grande para el título
-    fontWeight: "bold", // Texto en negrita
-    color: "#2E86AB", // Color azul característico de la marca
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#2CBDAA",
+    fontFamily: "Poppins-Bold",
   },
-  // Estilo para el subtítulo descriptivo
+
+  // Estilos del subtítulo
   subtitle: {
-    fontSize: 16, // Tamaño de fuente mediano
-    marginTop: 5, // Pequeño espacio superior
-    opacity: 0.7, // Transparencia para menor prominencia
+    fontSize: 14,
+    marginTop: 4,
+    color: "#64748B",
+    fontFamily: "Poppins-Regular",
   },
-  // Contenedor del mapa interactivo
+
+  // Contenedor del mapa
   mapContainer: {
-    flex: 1, // Ocupa el espacio principal disponible
-    margin: 20, // Margen exterior
-    borderRadius: 15, // Bordes muy redondeados
-    overflow: 'hidden', // Esconde el desbordamiento de bordes redondeados
-    backgroundColor: '#F5F5F5' // Fondo gris claro
+    flex: 1,
+    margin: 16,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  // Contenedor de la sección de acciones rápidas
+
+  // Sección de acciones rápidas
   quickActions: {
-    padding: 20, // Espaciado interno
+    padding: 16,
+    paddingTop: 8,
   },
-  // Título de la sección de acciones rápidas
+
+  // Título de la sección de acciones
   quickActionsTitle: {
-    marginBottom: 15, // Espacio inferior antes de los botones
+    marginBottom: 12,
+    color: "#1E293B",
+    fontFamily: "Poppins-SemiBold",
   },
-  // Contenedor horizontal para los botones de acción
+
+  // Contenedor de botones
   actionButtons: {
-    flexDirection: "row", // Disposición horizontal
-    justifyContent: "space-around", // Distribución uniforme del espacio
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
   },
-  // Estilo individual para cada botón de acción
+
+  // Estilo base para los botones
   actionButton: {
-    alignItems: "center", // Centra el contenido verticalmente
-    padding: 15, // Espaciado interno
-    backgroundColor: "#F8F9FA", // Fondo gris muy claro
-    borderRadius: 12, // Bordes redondeados
-    minWidth: 120, // Ancho mínimo para consistencia
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    borderRadius: 12,
+    flexDirection: "row",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
-  // Texto descriptivo de los botones de acción
+
+  // Estilo específico para el botón de "Reportar Perdida"
+  lostButton: {
+    backgroundColor: "#FF6B6B", // Rojo para indicar urgencia
+    marginRight: 6,
+  },
+
+  // Estilo específico para el botón de "Reportar Encontrada"
+  foundButton: {
+    backgroundColor: "#2CBDAA", // Color primario de la app
+    marginLeft: 6,
+  },
+
+  // Estilo base para el texto de los botones
   actionText: {
-    marginTop: 8, // Espacio superior después del ícono
-    fontSize: 12, // Tamaño de fuente pequeño
-    textAlign: "center", // Texto centrado
+    marginLeft: 8,
+    fontSize: 14,
+    fontFamily: "Poppins-SemiBold",
+    color: "#FFFFFF",
+  },
+
+  // Estilos específicos para el texto de cada botón
+  lostButtonText: {
+    color: "#FFFFFF",
+  },
+
+  foundButtonText: {
+    color: "#FFFFFF",
   },
 });
