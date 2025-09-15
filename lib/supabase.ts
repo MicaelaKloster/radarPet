@@ -1,49 +1,60 @@
-import { createClient } from '@supabase/supabase-js';
-import { Platform } from 'react-native';
+import { createClient } from "@supabase/supabase-js";
+import { Platform } from "react-native";
 
-// Para desarrollo local, necesitas obtener la clave real de Supabase
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://goxopvfsbdyyxysxirhc.supabase.co';
+// Configuración de Supabase
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-console.log('Supabase Config:', {
-  url: SUPABASE_URL,
-  hasKey: !!SUPABASE_ANON_KEY
-});
+// Validar variables de entorno
+if (!SUPABASE_URL) {
+  throw new Error(
+    "EXPO_PUBLIC_SUPABASE_URL no está definido en las variables de entorno"
+  );
+}
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Variables Supabase faltantes. Verifica tu archivo .env');
+if (!SUPABASE_ANON_KEY) {
+  throw new Error(
+    "EXPO_PUBLIC_SUPABASE_ANON_KEY no está definido en las variables de entorno"
+  );
 }
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     autoRefreshToken: true,
-    persistSession: true, // restaurado para conservar la sesión y permitir upload inmediato
-    detectSessionInUrl: true,
+    persistSession: true,
+    detectSessionInUrl: Platform.OS === "web",
   },
 });
 
-// Helper genérico (se mantiene por compatibilidad)
-export const signInWithProvider = async (provider: 'google') => {
-  return loginWithGoogle();
+// Funciones de autenticación
+
+export const signInWithProvider = async (
+  provider: "google" | "facebook" | "apple"
+) => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: provider,
+    options: {
+      redirectTo: getRedirectTo(),
+    },
+  });
+
+  if (error) throw error;
+  return data;
 };
 
-// Obtener redirect dinámico recomendado
 const getRedirectTo = () => {
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    // Volver a la raíz (siteURL debe coincidir o estar en Additional Redirect URLs)
-    return window.location.origin;
+  if (Platform.OS === "web") {
+    return typeof window !== "undefined" ? window.location.origin : "";
   }
-  // Para nativo usar el scheme configurado en app.json
-  return 'radarpet://';
+  // Para mobile, puedes personalizar la URL de redirección
+  return "radarpet://auth/callback";
 };
 
 export const loginWithGoogle = async () => {
-  const redirectTo = getRedirectTo();
-  return supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo,
-      skipBrowserRedirect: false,
-    },
-  });
+  return signInWithProvider("google");
+};
+
+export const logout = async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
 };
