@@ -159,19 +159,30 @@ const ReportesMascotasPerdidas = () => {
     // Si ya es URL completa, devolverla
     if (/^https?:\/\//i.test(path)) return path;
     const { data } = supabase.storage.from('reportes-fotos').getPublicUrl(path);
-    return data?.publicUrl || null;
+    if (!data?.publicUrl) {
+      console.log("❌ No se pudo generar URL pública para:", path);
+      return null;
+    }
+    console.log("✅ URL pública generada:", data.publicUrl);
+    return data?.publicUrl;
   };
 
   const obtenerImagenMascota = (reporte: Reporte): string | null => {
     // Priorizar foto principal de la mascota
     const principal = getStoragePublicUrl(reporte.mascota?.foto_principal_url || null);
-    if (principal) return principal;
+    if (principal) {
+      console.log("📸 Usando foto principal:", principal);
+      return principal;
+    }
     
     // Si no hay foto principal, usar la primera foto del reporte
     if (reporte.fotos_reportes && reporte.fotos_reportes.length > 0) {
-      return getStoragePublicUrl(reporte.fotos_reportes[0].ruta_storage);
+      const fallback = getStoragePublicUrl(reporte.fotos_reportes[0].ruta_storage);
+      console.log("📸 Usando foto de reporte:", fallback);
+      return fallback;
     }
     
+    console.log("⚠️ Reporte sin imagen:", reporte.id);
     return null;
   };
 
