@@ -46,6 +46,12 @@ export default function MapScreen() {
         <ThemedText style={styles.subtitle}>
           Encuentra a tu mascota perdida
         </ThemedText>
+        <TouchableOpacity
+          style={styles.fullMapButton}
+          onPress={() => router.push("/mapa-completo")}
+        >
+          <ThemedText style={styles.fullMapButtonText}>Ver Mapa</ThemedText>
+        </TouchableOpacity>
       </ThemedView>
 
       {/* Sección del mapa interactivo */}
@@ -63,7 +69,11 @@ export default function MapScreen() {
         <View style={styles.actionButtons}>
           {/* Botón para reportar mascota perdida */}
           <TouchableOpacity
-            style={[styles.actionButton, styles.lostButton]}
+            style={[
+              styles.actionButton,
+              styles.lostButton,
+              { backgroundColor: "#2CBDAA" },
+            ]}
             onPress={navigateToLostPets}
             activeOpacity={0.8}
           >
@@ -79,16 +89,26 @@ export default function MapScreen() {
 
           {/* Botón para reportar mascota encontrada */}
           <TouchableOpacity
-            style={[styles.actionButton, styles.foundButton]}
+            style={[
+              styles.actionButton,
+              styles.foundButton,
+              { backgroundColor: "#E5E7EB" },
+            ]}
             onPress={navigateToFoundPets}
             activeOpacity={0.8}
           >
             <IconSymbol
               size={28}
               name="checkmark.circle.fill"
-              color="#FFFFFF"
+              color="#4B5563"
             />
-            <ThemedText style={[styles.actionText, styles.foundButtonText]}>
+            <ThemedText
+              style={[
+                styles.actionText,
+                styles.foundButtonText,
+                { color: "#4B5563" },
+              ]}
+            >
               Reportar Encontrada
             </ThemedText>
           </TouchableOpacity>
@@ -109,25 +129,23 @@ const styles = StyleSheet.create({
 
   // Estilos del encabezado
   header: {
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingBottom: 15,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    position: "relative",
   },
 
   // Estilos del título principal
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#2CBDAA",
-    fontFamily: "Poppins-Bold",
+    marginBottom: 4,
   },
 
   // Estilos del subtítulo
   subtitle: {
-    fontSize: 14,
-    marginTop: 4,
-    color: "#64748B",
-    fontFamily: "Poppins-Regular",
+    fontSize: 16,
+    color: "#6B7280",
   },
 
   // Contenedor del mapa
@@ -193,13 +211,11 @@ const styles = StyleSheet.create({
 
   // Estilo específico para el botón de "Reportar Perdida"
   lostButton: {
-    backgroundColor: "#FF6B6B", // Rojo para indicar urgencia
     marginRight: 6,
   },
 
   // Estilo específico para el botón de "Reportar Encontrada"
   foundButton: {
-    backgroundColor: "#2CBDAA", // Color primario de la app
     marginLeft: 6,
   },
 
@@ -218,5 +234,27 @@ const styles = StyleSheet.create({
 
   foundButtonText: {
     color: "#FFFFFF",
+  },
+  fullMapButton: {
+    position: "absolute",
+    top: 20,
+    right: 16,
+    backgroundColor: "#2CBDAA",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  fullMapButtonText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 14,
   },
 });
