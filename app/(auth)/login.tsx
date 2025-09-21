@@ -69,9 +69,17 @@ export default function LoginScreen() {
 
   const loginGoogle = async () => {
     setLoading(true);
-    const { error } = await loginWithGoogle();
+    try {
+      const { error } = await loginWithGoogle();
+      if (error) {
+        Alert.alert('Error', error.message);
+      } else {
+        router.replace('/(tabs)');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Error al iniciar sesión con Google');
+    }
     setLoading(false);
-    if (error) Alert.alert('Error', error.message);
   };
 
   return (
