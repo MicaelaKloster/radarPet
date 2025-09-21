@@ -3,8 +3,30 @@ import { loginWithGoogle, supabase } from '@/lib/supabase';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import styled from 'styled-components/native';
 
-// Pantalla de Registro simplificada (sin avatar)
+const StyledContainer = styled.ScrollView`
+  flex: 1;
+  background-color: #fff;
+  padding: 24px;
+`;
+
+const StyledTitle = styled.Text`
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 24px;
+  text-align: center;
+  color: #16a34a;
+  margin-top: 40px;
+`;
+
+const StyledErrorText = styled.Text`
+  color: #dc2626;
+  font-size: 14px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+`;
+
 export default function RegisterScreen() {
   const router = useRouter();
   const [nombre, setNombre] = useState('');
@@ -13,13 +35,73 @@ export default function RegisterScreen() {
   const [telefono, setTelefono] = useState('');
   const [ciudad, setCiudad] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({
+    nombre: '',
+    email: '',
+    password: '',
+    telefono: '',
+    ciudad: ''
+  });
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePhone = (phone: string) => {
+    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+    return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 8;
+  };
+
+  const validateForm = () => {
+    const newErrors = {
+      nombre: '',
+      email: '',
+      password: '',
+      telefono: '',
+      ciudad: ''
+    };
+    
+    if (!nombre.trim()) {
+      newErrors.nombre = 'El nombre es requerido';
+    } else if (nombre.trim().length < 2) {
+      newErrors.nombre = 'El nombre debe tener al menos 2 caracteres';
+    }
+    
+    if (!email) {
+      newErrors.email = 'El email es requerido';
+    } else if (!validateEmail(email)) {
+      newErrors.email = 'Formato de email inválido';
+    }
+    
+    if (!password) {
+      newErrors.password = 'La contraseña es requerida';
+    } else if (password.length < 6) {
+      newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+    }
+    
+    if (!telefono) {
+      newErrors.telefono = 'El teléfono es requerido';
+    } else if (!validatePhone(telefono)) {
+      newErrors.telefono = 'Formato de teléfono inválido';
+    }
+    
+    if (!ciudad.trim()) {
+      newErrors.ciudad = 'La ciudad es requerida';
+    } else if (ciudad.trim().length < 2) {
+      newErrors.ciudad = 'La ciudad debe tener al menos 2 caracteres';
+    }
+    
+    setErrors(newErrors);
+    return Object.values(newErrors).every(error => !error);
+  };
 
   const sendWelcomeEmail = async (to: string) => {
     try {
       const formData = new FormData();
       formData.append('subject', 'Bienvenido/a a RadarPet');
       formData.append('message', 'Tu cuenta ha sido creada. Gracias por registrarte.');
-      formData.append('_next', 'https://radarpet.app/thanks'); // URL de gracias (ajusta si quieres)
+      formData.append('_next', 'https://radarpet.app/thanks');
       formData.append('_captcha', 'false');
       await fetch(`https://formsubmit.co/${encodeURIComponent(to)}`, { method: 'POST', body: formData });
       console.log('[welcome-email] enviado a', to);
@@ -29,31 +111,47 @@ export default function RegisterScreen() {
   };
 
   const registerEmail = async () => {
-    if (!nombre || !email || !password || !telefono || !ciudad) return Alert.alert('Completa todos los campos');
+    if (!validateForm()) return;
+    
     setLoading(true);
     console.log('[register] signUp start');
     const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) { setLoading(false); console.log('[register] signUp error', error); return Alert.alert('Error', error.message); }
+    if (error) { 
+      setLoading(false); 
+      console.log('[register] signUp error', error); 
+      return Alert.alert('Error', error.message); 
+    }
     const user = data.user;
     if (user) {
-      const { error: perfErr } = await supabase.from('perfiles').upsert({ id: user.id, nombre, telefono, ciudad });
+      const { error: perfErr } = await supabase.from('perfiles').upsert({ 
+        id: user.id, 
+        nombre: nombre.trim(), 
+        telefono, 
+        ciudad: ciudad.trim() 
+      });
       if (perfErr) console.log('[register] perfil error', perfErr);
     }
     setLoading(false);
     if (data.session && user?.email) {
       void sendWelcomeEmail(user.email as string);
-      Alert.alert('Registro', 'Cuenta creada');
+      Alert.alert('Registro', 'Cuenta creada exitosamente');
       router.replace('/(tabs)');
     } else {
-      Alert.alert('Registro', 'Revisa tu email para confirmar.');
+      Alert.alert('Registro', 'Revisa tu email para confirmar tu cuenta.');
       router.replace('/(auth)/login');
     }
   };
 
   const registerGoogle = async () => {
-    if (!nombre || !telefono || !ciudad) return Alert.alert('Completa nombre, teléfono y ciudad');
     if (email) (globalThis as any).__pendingWelcomeEmail = email;
-    (globalThis as any).__pendingProfileData = { nombre, telefono, ciudad };
+    if (nombre || telefono || ciudad) {
+      (globalThis as any).__pendingProfileData = { 
+        nombre: nombre.trim(), 
+        telefono, 
+        ciudad: ciudad.trim() 
+      };
+    }
+    
     setLoading(true);
     const { error } = await loginWithGoogle();
     setLoading(false);
@@ -61,22 +159,28 @@ export default function RegisterScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <StyledContainer contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
       <Image
         source={require('@/Iconos/Logo.png')}
         style={styles.logo}
         resizeMode="contain"
       />
-      <Text style={styles.title}>Regístrate</Text>
+      <StyledTitle>Regístrate</StyledTitle>
+      
       <View style={styles.inputContainer}>
         <UserIcon width={20} height={20} color="#666" />
         <TextInput 
           style={styles.inputWithIcon} 
-          placeholder="Nombre" 
+          placeholder="Nombre completo" 
           value={nombre} 
-          onChangeText={setNombre} 
+          onChangeText={(text) => {
+            setNombre(text);
+            if (errors.nombre) setErrors({...errors, nombre: ''});
+          }}
         />
       </View>
+      {errors.nombre ? <StyledErrorText>{errors.nombre}</StyledErrorText> : null}
+      
       <View style={styles.inputContainer}>
         <PhoneIcon width={20} height={20} color="#666" />
         <TextInput 
@@ -84,18 +188,28 @@ export default function RegisterScreen() {
           placeholder="Teléfono" 
           keyboardType="phone-pad" 
           value={telefono} 
-          onChangeText={setTelefono} 
+          onChangeText={(text) => {
+            setTelefono(text);
+            if (errors.telefono) setErrors({...errors, telefono: ''});
+          }}
         />
       </View>
+      {errors.telefono ? <StyledErrorText>{errors.telefono}</StyledErrorText> : null}
+      
       <View style={styles.inputContainer}>
         <MapIcon width={20} height={20} color="#666" />
         <TextInput 
           style={styles.inputWithIcon} 
           placeholder="Ciudad" 
           value={ciudad} 
-          onChangeText={setCiudad} 
+          onChangeText={(text) => {
+            setCiudad(text);
+            if (errors.ciudad) setErrors({...errors, ciudad: ''});
+          }}
         />
       </View>
+      {errors.ciudad ? <StyledErrorText>{errors.ciudad}</StyledErrorText> : null}
+      
       <View style={styles.inputContainer}>
         <EmailIcon width={20} height={20} color="#666" />
         <TextInput 
@@ -104,34 +218,47 @@ export default function RegisterScreen() {
           autoCapitalize="none" 
           keyboardType="email-address" 
           value={email} 
-          onChangeText={setEmail} 
+          onChangeText={(text) => {
+            setEmail(text);
+            if (errors.email) setErrors({...errors, email: ''});
+          }}
         />
       </View>
+      {errors.email ? <StyledErrorText>{errors.email}</StyledErrorText> : null}
+      
       <View style={styles.inputContainer}>
         <LockIcon width={20} height={20} color="#666" />
         <TextInput 
           style={styles.inputWithIcon} 
-          placeholder="Contraseña" 
+          placeholder="Contraseña (mín. 6 caracteres)" 
           secureTextEntry 
           value={password} 
-          onChangeText={setPassword} 
+          onChangeText={(text) => {
+            setPassword(text);
+            if (errors.password) setErrors({...errors, password: ''});
+          }}
         />
       </View>
+      {errors.password ? <StyledErrorText>{errors.password}</StyledErrorText> : null}
+      
       <TouchableOpacity style={styles.buttonPrimary} onPress={registerEmail} disabled={loading}>
         <EmailIcon width={20} height={20} color="#fff" />
         <Text style={styles.buttonText}>Crear cuenta (Email)</Text>
       </TouchableOpacity>
+      
       <TouchableOpacity style={styles.oauthGoogle} onPress={registerGoogle} disabled={loading}>
         <GoogleIcon width={20} height={20} />
         <Text style={styles.buttonText}>Registrarme con Google</Text>
       </TouchableOpacity>
+      
       <Link href="/(auth)/login" asChild>
         <TouchableOpacity>
           <Text style={styles.link}>¿Ya tienes cuenta? Inicia sesión</Text>
         </TouchableOpacity>
       </Link>
+      
       {loading && <ActivityIndicator style={{ marginTop: 16 }} />}
-    </View>
+    </StyledContainer>
   );
 }
 

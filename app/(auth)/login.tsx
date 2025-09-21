@@ -3,15 +3,64 @@ import { loginWithGoogle, supabase } from '@/lib/supabase';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import styled from 'styled-components/native';
+
+const StyledContainer = styled.View`
+  flex: 1;
+  justify-content: center;
+  padding: 24px;
+  background-color: #fff;
+`;
+
+const StyledTitle = styled.Text`
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 32px;
+  text-align: center;
+  color: #2CBDAA;
+`;
+
+const StyledErrorText = styled.Text`
+  color: #dc2626;
+  font-size: 14px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+`;
 
 export default function LoginScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState({ email: '', password: '' });
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateForm = () => {
+    const newErrors = { email: '', password: '' };
+    
+    if (!email) {
+      newErrors.email = 'El email es requerido';
+    } else if (!validateEmail(email)) {
+      newErrors.email = 'Formato de email inválido';
+    }
+    
+    if (!password) {
+      newErrors.password = 'La contraseña es requerida';
+    } else if (password.length < 6) {
+      newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+    }
+    
+    setErrors(newErrors);
+    return !newErrors.email && !newErrors.password;
+  };
 
   const handleLogin = async () => {
-    if (!email || !password) return Alert.alert('Completa los campos');
+    if (!validateForm()) return;
+    
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
@@ -26,13 +75,13 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <StyledContainer>
       <Image
         source={require('@/Iconos/Logo.png')}
         style={styles.logo}
         resizeMode="contain"
       />
-      <Text style={styles.title}>RadarPet</Text>
+      <StyledTitle>RadarPet</StyledTitle>
       <View style={styles.inputContainer}>
         <EmailIcon width={20} height={20} color="#666" />
         <TextInput 
@@ -41,9 +90,14 @@ export default function LoginScreen() {
           autoCapitalize="none" 
           keyboardType="email-address" 
           value={email} 
-          onChangeText={setEmail} 
+          onChangeText={(text) => {
+            setEmail(text);
+            if (errors.email) setErrors({...errors, email: ''});
+          }}
         />
       </View>
+      {errors.email ? <StyledErrorText>{errors.email}</StyledErrorText> : null}
+      
       <View style={styles.inputContainer}>
         <LockIcon width={20} height={20} color="#666" />
         <TextInput 
@@ -51,9 +105,14 @@ export default function LoginScreen() {
           placeholder="Contraseña" 
           secureTextEntry 
           value={password} 
-          onChangeText={setPassword} 
+          onChangeText={(text) => {
+            setPassword(text);
+            if (errors.password) setErrors({...errors, password: ''});
+          }}
         />
       </View>
+      {errors.password ? <StyledErrorText>{errors.password}</StyledErrorText> : null}
+      
       <TouchableOpacity style={styles.buttonPrimary} onPress={handleLogin} disabled={loading}>
         <EmailIcon width={20} height={20} color="#fff" />
         <Text style={styles.buttonText}>Ingresar</Text>
@@ -68,7 +127,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </Link>
       {loading && <ActivityIndicator style={{ marginTop: 16 }} />}
-    </View>
+    </StyledContainer>
   );
 }
 
