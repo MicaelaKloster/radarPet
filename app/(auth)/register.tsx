@@ -2,33 +2,14 @@ import { EmailIcon, GoogleIcon, LockIcon, MapIcon, PhoneIcon, UserIcon } from '@
 import { loginWithGoogle, supabase } from '@/lib/supabase';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import styled from 'styled-components/native';
+import { ActivityIndicator, Alert, Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const StyledContainer = styled.ScrollView`
-  flex: 1;
-  background-color: #fff;
-  padding: 24px;
-`;
-
-const StyledTitle = styled.Text`
-  font-size: 32px;
-  font-weight: bold;
-  margin-bottom: 24px;
-  text-align: center;
-  color: #16a34a;
-  margin-top: 40px;
-`;
-
-const StyledErrorText = styled.Text`
-  color: #dc2626;
-  font-size: 14px;
-  margin-top: 4px;
-  margin-bottom: 8px;
-`;
+const { height: screenHeight } = Dimensions.get('window');
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -167,143 +148,209 @@ export default function RegisterScreen() {
   };
 
   return (
-    <StyledContainer contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
-      <Image
-        source={require('@/Iconos/Logo.png')}
-        style={styles.logo}
-        resizeMode="contain"
-      />
-      <StyledTitle>Regístrate</StyledTitle>
-      
-      <View style={styles.inputContainer}>
-        <UserIcon width={20} height={20} color="#666" />
-        <TextInput 
-          style={styles.inputWithIcon} 
-          placeholder="Nombre completo" 
-          value={nombre} 
-          onChangeText={(text) => {
-            setNombre(text);
-            if (errors.nombre) setErrors({...errors, nombre: ''});
-          }}
-        />
-      </View>
-      {errors.nombre ? <StyledErrorText>{errors.nombre}</StyledErrorText> : null}
-      
-      <View style={styles.inputContainer}>
-        <PhoneIcon width={20} height={20} color="#666" />
-        <TextInput 
-          style={styles.inputWithIcon} 
-          placeholder="Teléfono" 
-          keyboardType="phone-pad" 
-          value={telefono} 
-          onChangeText={(text) => {
-            setTelefono(text);
-            if (errors.telefono) setErrors({...errors, telefono: ''});
-          }}
-        />
-      </View>
-      {errors.telefono ? <StyledErrorText>{errors.telefono}</StyledErrorText> : null}
-      
-      <View style={styles.inputContainer}>
-        <MapIcon width={20} height={20} color="#666" />
-        <TextInput 
-          style={styles.inputWithIcon} 
-          placeholder="Ciudad" 
-          value={ciudad} 
-          onChangeText={(text) => {
-            setCiudad(text);
-            if (errors.ciudad) setErrors({...errors, ciudad: ''});
-          }}
-        />
-      </View>
-      {errors.ciudad ? <StyledErrorText>{errors.ciudad}</StyledErrorText> : null}
-      
-      <View style={styles.inputContainer}>
-        <EmailIcon width={20} height={20} color="#666" />
-        <TextInput 
-          style={styles.inputWithIcon} 
-          placeholder="Email" 
-          autoCapitalize="none" 
-          keyboardType="email-address" 
-          value={email} 
-          onChangeText={(text) => {
-            setEmail(text);
-            if (errors.email) setErrors({...errors, email: ''});
-          }}
-        />
-      </View>
-      {errors.email ? <StyledErrorText>{errors.email}</StyledErrorText> : null}
-      
-      <View style={styles.inputContainer}>
-        <LockIcon width={20} height={20} color="#666" />
-        <TextInput 
-          style={styles.inputWithIcon} 
-          placeholder="Contraseña (mín. 6 caracteres)" 
-          secureTextEntry 
-          value={password} 
-          onChangeText={(text) => {
-            setPassword(text);
-            if (errors.password) setErrors({...errors, password: ''});
-          }}
-        />
-      </View>
-      {errors.password ? <StyledErrorText>{errors.password}</StyledErrorText> : null}
-      
-      <TouchableOpacity style={styles.buttonPrimary} onPress={registerEmail} disabled={loading}>
-        <EmailIcon width={20} height={20} color="#fff" />
-        <Text style={styles.buttonText}>Crear cuenta (Email)</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity style={styles.oauthGoogle} onPress={registerGoogle} disabled={loading}>
-        <GoogleIcon width={20} height={20} />
-        <Text style={styles.buttonText}>Registrarme con Google</Text>
-      </TouchableOpacity>
-      
-      <Link href="/(auth)/login" asChild>
-        <TouchableOpacity>
-          <Text style={styles.link}>¿Ya tienes cuenta? Inicia sesión</Text>
-        </TouchableOpacity>
-      </Link>
-      
-      {loading && <ActivityIndicator style={{ marginTop: 16 }} />}
-    </StyledContainer>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.header}>
+          <Image
+            source={require('@/Iconos/Logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.title}>Regístrate</Text>
+        </View>
+
+        <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <UserIcon width={20} height={20} color="#666" />
+            <TextInput 
+              style={styles.inputWithIcon} 
+              placeholder="Nombre completo" 
+              value={nombre} 
+              onChangeText={(text) => {
+                setNombre(text);
+                if (errors.nombre) setErrors({...errors, nombre: ''});
+              }}
+            />
+          </View>
+          {errors.nombre ? <Text style={styles.errorText}>{errors.nombre}</Text> : null}
+          
+          <View style={styles.inputContainer}>
+            <PhoneIcon width={20} height={20} color="#666" />
+            <TextInput 
+              style={styles.inputWithIcon} 
+              placeholder="Teléfono" 
+              keyboardType="phone-pad" 
+              value={telefono} 
+              onChangeText={(text) => {
+                setTelefono(text);
+                if (errors.telefono) setErrors({...errors, telefono: ''});
+              }}
+            />
+          </View>
+          {errors.telefono ? <Text style={styles.errorText}>{errors.telefono}</Text> : null}
+          
+          <View style={styles.inputContainer}>
+            <MapIcon width={20} height={20} color="#666" />
+            <TextInput 
+              style={styles.inputWithIcon} 
+              placeholder="Ciudad" 
+              value={ciudad} 
+              onChangeText={(text) => {
+                setCiudad(text);
+                if (errors.ciudad) setErrors({...errors, ciudad: ''});
+              }}
+            />
+          </View>
+          {errors.ciudad ? <Text style={styles.errorText}>{errors.ciudad}</Text> : null}
+          
+          <View style={styles.inputContainer}>
+            <EmailIcon width={20} height={20} color="#666" />
+            <TextInput 
+              style={styles.inputWithIcon} 
+              placeholder="Email" 
+              autoCapitalize="none" 
+              keyboardType="email-address" 
+              value={email} 
+              onChangeText={(text) => {
+                setEmail(text);
+                if (errors.email) setErrors({...errors, email: ''});
+              }}
+            />
+          </View>
+          {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+          
+          <View style={styles.inputContainer}>
+            <LockIcon width={20} height={20} color="#666" />
+            <TextInput 
+              style={styles.inputWithIcon} 
+              placeholder="Contraseña (mín. 6 caracteres)" 
+              secureTextEntry 
+              value={password} 
+              onChangeText={(text) => {
+                setPassword(text);
+                if (errors.password) setErrors({...errors, password: ''});
+              }}
+            />
+          </View>
+          {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+          
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity style={styles.buttonPrimary} onPress={registerEmail} disabled={loading}>
+              <EmailIcon width={20} height={20} color="#fff" />
+              <Text style={styles.buttonText}>Crear cuenta (Email)</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.oauthGoogle} onPress={registerGoogle} disabled={loading}>
+              <GoogleIcon width={20} height={20} />
+              <Text style={styles.buttonText}>Registrarme con Google</Text>
+            </TouchableOpacity>
+            
+            <Link href="/(auth)/login" asChild>
+              <TouchableOpacity>
+                <Text style={styles.link}>¿Ya tienes cuenta? Inicia sesión</Text>
+              </TouchableOpacity>
+            </Link>
+            
+            {loading && <ActivityIndicator style={{ marginTop: 16 }} />}
+          </View>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
-  logo: { width: 100, height: 100, alignSelf: 'center', marginBottom: 20 },
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 24, textAlign: 'center', color: '#16a34a' },
-  inputContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    borderWidth: 1, 
-    borderColor: '#ccc', 
-    borderRadius: 8, 
-    paddingHorizontal: 12, 
-    marginBottom: 12,
-    height: 50
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
   },
-  inputWithIcon: { flex: 1, marginLeft: 10, fontSize: 16 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 12 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16, marginLeft: 8 },
-  link: { marginTop: 16, color: '#2563eb', textAlign: 'center' },
-  buttonPrimary: { 
-    backgroundColor: '#16a34a', 
-    padding: 16, 
-    borderRadius: 8, 
-    alignItems: 'center', 
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  header: {
+    alignItems: 'center',
+    paddingTop: screenHeight > 700 ? 40 : 20,
+    paddingBottom: 20,
+  },
+  logo: {
+    width: screenHeight > 700 ? 100 : 80,
+    height: screenHeight > 700 ? 100 : 80,
+    marginBottom: 15,
+  },
+  title: {
+    fontSize: screenHeight > 700 ? 32 : 28,
+    fontWeight: 'bold',
+    color: '#16a34a',
+    textAlign: 'center',
+  },
+  form: {
+    flex: 1,
+    paddingTop: 10,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    height: Platform.OS === 'ios' ? 50 : 55,
+  },
+  inputWithIcon: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 16,
+    paddingVertical: Platform.OS === 'android' ? 15 : 0,
+  },
+  errorText: {
+    color: '#dc2626',
+    fontSize: 14,
+    marginTop: -8,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  buttonsContainer: {
+    marginTop: 20,
+    paddingBottom: 20,
+  },
+  buttonPrimary: {
+    backgroundColor: '#16a34a',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
     marginBottom: 12,
     flexDirection: 'row',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    minHeight: 50,
   },
-  oauthGoogle: { 
-    backgroundColor: '#ea4335', 
-    padding: 16, 
-    borderRadius: 8, 
-    alignItems: 'center', 
+  oauthGoogle: {
+    backgroundColor: '#ea4335',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
     marginBottom: 12,
     flexDirection: 'row',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    minHeight: 50,
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  link: {
+    marginTop: 16,
+    color: '#2563eb',
+    textAlign: 'center',
+    fontSize: 16,
+    paddingVertical: 10,
   },
 });
