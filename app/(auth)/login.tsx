@@ -1,5 +1,6 @@
 import { EmailIcon, GoogleIcon, LockIcon } from '@/components/Icons';
 import { loginWithGoogle, supabase } from '@/lib/supabase';
+import * as AuthSession from 'expo-auth-session';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -53,14 +54,32 @@ export default function LoginScreen() {
     try {
       const { error } = await loginWithGoogle();
       if (error) {
-        Alert.alert('Error', error.message);
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        Alert.alert('Error', errorMessage);
       } else {
         router.replace('/(tabs)');
       }
     } catch (err) {
+      console.error('Error en loginGoogle:', err);
       Alert.alert('Error', 'Error al iniciar sesión con Google');
     }
     setLoading(false);
+  };
+
+  // Función temporal para debug - mostrar URL de redirección
+  const showDebugInfo = () => {
+    try {
+      const redirectUri = AuthSession.makeRedirectUri({
+        path: '/--/auth/callback',
+      });
+      Alert.alert(
+        'Debug Info', 
+        `Redirect URI: ${redirectUri}\n\nConfigura esta URL en Supabase:\n\nSite URL: ${redirectUri.split('/--/auth/callback')[0]}\n\nRedirect URLs: ${redirectUri},radarpet://auth/callback`
+      );
+    } catch (err) {
+      console.error('Error generando debug info:', err);
+      Alert.alert('Error', 'No se pudo generar URI de redirección');
+    }
   };
 
   return (
@@ -119,6 +138,11 @@ export default function LoginScreen() {
           <TouchableOpacity style={styles.oauthGoogle} onPress={loginGoogle} disabled={loading}>
             <GoogleIcon width={20} height={20} />
             <Text style={styles.buttonText}>Ingresar con Google</Text>
+          </TouchableOpacity>
+          
+          {/* Botón temporal de debug */}
+          <TouchableOpacity style={styles.debugButton} onPress={showDebugInfo}>
+            <Text style={styles.debugButtonText}>🔧 Ver URLs para Supabase</Text>
           </TouchableOpacity>
           
           <Link href="/(auth)/register" asChild>
@@ -220,5 +244,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     paddingVertical: 10,
+  },
+  debugButton: {
+    backgroundColor: '#ff6b35',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 12,
+    minHeight: 40,
+  },
+  debugButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });

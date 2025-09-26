@@ -10,7 +10,8 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "userInterfaceStyle": "light"
+      "userInterfaceStyle": "light",
+      "bundleIdentifier": "com.radarpet.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +19,12 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "userInterfaceStyle": "light"
+      "userInterfaceStyle": "light",
+      "package": "com.radarpet.app",
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "bundler": "metro",
