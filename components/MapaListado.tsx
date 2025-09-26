@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import { Image } from 'expo-image';
+import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 
 export type ReportMarker = {
@@ -26,7 +27,22 @@ function parseWKTPoint(wkt?: string | null): { lat: number; lng: number } | null
 export default function MapaListado({ height = undefined }: { height?: number }) {
   const [loading, setLoading] = useState(true);
   const [markers, setMarkers] = useState<ReportMarker[]>([]);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const mapRef = useRef<MapView | null>(null);
+
+  useEffect(() => {
+    const getUserLocation = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      }
+    };
+    getUserLocation();
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -77,6 +93,13 @@ export default function MapaListado({ height = undefined }: { height?: number })
               items.map(i => ({ latitude: i.lat, longitude: i.lng })),
               { edgePadding: { top: 80, left: 40, right: 40, bottom: 120 }, animated: true }
             );
+          } else if (mapRef.current && userLocation) {
+            mapRef.current.animateToRegion({
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            });
           }
         }, 0);
       } catch (e) {
@@ -86,17 +109,23 @@ export default function MapaListado({ height = undefined }: { height?: number })
       }
     };
     load();
-  }, []);
+  }, [userLocation]);
 
-  const initialRegion = useMemo(
-    () => ({ latitude: -31.4201, longitude: -64.1888, latitudeDelta: 0.2, longitudeDelta: 0.2 }),
-    []
-  );
+  const initialRegion = useMemo(() => {
+    if (userLocation) {
+      return {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+    }
+    return { latitude: -31.4201, longitude: -64.1888, latitudeDelta: 0.2, longitudeDelta: 0.2 };
+  }, [userLocation]);
 
   return (
     <View style={[styles.container, height ? { height } : { flex: 1 }]}>
-      <MapView ref={mapRef} style={StyleSheet.absoluteFill} initialRegion={initialRegion}>
-        <UrlTile urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} flipY={false} zIndex={0} />
+      <MapView ref={mapRef} style={StyleSheet.absoluteFill} initialRegion={initialRegion} showsUserLocation={true} showsMyLocationButton={true}>
         {markers.map(m => (
           <Marker key={m.id} coordinate={{ latitude: m.lat, longitude: m.lng }}>
             <View style={[styles.pin, { borderColor: m.tipo === 'perdida' ? '#ef4444' : '#22c55e' }]}>              
