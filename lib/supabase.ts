@@ -9,6 +9,7 @@ WebBrowser.maybeCompleteAuthSession();
 // Configuración de Supabase
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const DEV_IP = process.env.EXPO_PUBLIC_DEV_IP;
 
 // Validar variables de entorno
 if (!SUPABASE_URL) {
@@ -78,8 +79,8 @@ const getRedirectTo = () => {
   
   // Para móviles - usar IP local para desarrollo más estable
   if (__DEV__) {
-    // Tu IP local específica - más estable que las URLs dinámicas de Expo
-    const redirectUri = 'exp://192.168.144.89:8081/--/auth/callback';
+    const ip = DEV_IP;
+    const redirectUri = `exp://${ip}:8081/--/auth/callback`;
     console.log('Redirect URI para desarrollo:', redirectUri);
     return redirectUri;
   }
