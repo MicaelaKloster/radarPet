@@ -1,5 +1,5 @@
 import { EmailIcon, GoogleIcon, LockIcon, MapIcon, PhoneIcon, UserIcon } from '@/components/Icons';
-import { loginWithGoogle, supabase } from '@/lib/supabase';
+import { registerWithGoogle, supabase } from '@/lib/supabase';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -135,13 +135,15 @@ export default function RegisterScreen() {
     
     setLoading(true);
     try {
-      const { error } = await loginWithGoogle();
+      const { error } = await registerWithGoogle();
       if (error) {
-        Alert.alert('Error', error.message);
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        Alert.alert('Error', errorMessage);
       } else {
         router.replace('/(tabs)');
       }
     } catch (err) {
+      console.error('Error en registerGoogle:', err);
       Alert.alert('Error', 'Error al registrarse con Google');
     }
     setLoading(false);

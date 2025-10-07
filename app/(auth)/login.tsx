@@ -53,16 +53,19 @@ export default function LoginScreen() {
     try {
       const { error } = await loginWithGoogle();
       if (error) {
-        Alert.alert('Error', error.message);
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        Alert.alert('Error', errorMessage);
       } else {
         router.replace('/(tabs)');
       }
     } catch (err) {
+      console.error('Error en loginGoogle:', err);
       Alert.alert('Error', 'Error al iniciar sesión con Google');
     }
     setLoading(false);
   };
 
+  // Función temporal para debug - mostrar URL de redirección
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView 
