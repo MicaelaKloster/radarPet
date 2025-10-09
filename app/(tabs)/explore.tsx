@@ -1,56 +1,70 @@
+// Importaciones de constantes de diseño (colores, espaciados, tipografía, etc.)
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/Theme';
+// Hook personalizado para cargar fuentes
 import { useAppFonts } from '@/hooks/useFonts';
+// Cliente de Supabase para conexión con la base de datos
 import { supabase } from '@/lib/supabase';
+// Librería de iconos de Expo
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  ActivityIndicator,  // Spinner de carga
+  Alert,              // Alertas nativas
+  Image,              // Componente para mostrar imágenes
+  RefreshControl,     // Control de pull-to-refresh
+  ScrollView,         // Vista desplazable
+  StyleSheet,         // Estilos
+  Text,               // Texto
+  TextInput,          // Campo de texto
+  TouchableOpacity,   // Botón táctil
+  View,               // Contenedor
 } from 'react-native';
+// SafeAreaView para evitar que el contenido se superponga con notch/status bar
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// ============================================
+// INTERFAZ: Define la estructura de un Reporte
+// ============================================
 interface Reporte {
   id: string;
   titulo: string;
   descripcion: string;
-  creado_en: string;
-  recompensa: number | null;
-  direccion_referencia: string | null;
-  mascota: {
+  creado_en: string;                        // Fecha de creación
+  recompensa: number | null;                // Recompensa ofrecida (opcional)
+  direccion_referencia: string | null;      // Ubicación (opcional)
+  mascota: {                                // Datos de la mascota
     nombre: string;
     especie: {
-      nombre: string;
+      nombre: string;                       // Ej: "Perro", "Gato"
     };
     raza: string | null;
     color: string | null;
     foto_principal_url: string | null;
   } | null;
-  reportero: {
+  reportero: {                              // Persona que hizo el reporte
     nombre: string;
     telefono: string | null;
   };
-  fotos_reportes: {
+  fotos_reportes: {                         // Fotos adicionales del reporte
     ruta_storage: string;
   }[];
 }
 
+// ============================================
+// COMPONENTE PRINCIPAL
+// ============================================
 const ReportesMascotasPerdidas = () => {
-  const [reportes, setReportes] = useState<Reporte[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [filtroActivo, setFiltroActivo] = useState<'perdidas' | 'encontradas'>('perdidas');
+  // ========== ESTADOS ==========
+  const [reportes, setReportes] = useState<Reporte[]>([]);           // Lista de reportes
+  const [loading, setLoading] = useState(true);                       // Estado de carga inicial
+  const [refreshing, setRefreshing] = useState(false);                // Estado de refresh
+  const [searchText, setSearchText] = useState('');                   // Texto de búsqueda
+  const [filtroActivo, setFiltroActivo] = useState<'perdidas' | 'encontradas'>('perdidas'); // Filtro activo
   
+  // Cargar fuentes personalizadas
   const fontsLoaded = useAppFonts();
   
+  // Si las fuentes no están cargadas, mostrar spinner
   if (!fontsLoaded) {
     return (
       <View style={styles.loadingContainer}>
@@ -59,28 +73,32 @@ const ReportesMascotasPerdidas = () => {
     );
   }
 
+  // ========== EFECTO: Cargar reportes cuando cambia el filtro ==========
   useEffect(() => {
     cargarReportes();
   }, [filtroActivo]);
 
+  // ========== FUNCIÓN: Cargar reportes desde Supabase ==========
   const cargarReportes = async () => {
     try {
       setLoading(true);
       
-      // Obtener el tipo de reporte según el filtro activo
+      // 1. Obtener el ID del tipo de reporte según el filtro activo
       const { data: tipoReporte } = await supabase
         .from('tipos_reportes')
         .select('id')
         .eq('nombre', filtroActivo === 'perdidas' ? 'perdida' : 'encontrada')
-        .eq('estado', 'AC')
-        .maybeSingle();
+        .eq('estado', 'AC')  // Solo activos
+        .maybeSingle();      // Devuelve un solo resultado o null
 
+      // Si no se encuentra el tipo de reporte, no hay nada que mostrar
       if (!tipoReporte) {
         console.log('No se encontró el tipo de reporte');
         setReportes([]);
         return;
       }
 
+      // 2. Obtener los reportes con todas sus relaciones (JOIN)
       const { data, error } = await supabase
         .from('reportes')
         .select(`
@@ -107,38 +125,44 @@ const ReportesMascotasPerdidas = () => {
             ruta_storage
           )
         `)
-        .eq('tipo_id', tipoReporte.id)
-        .eq('estado', 'AC')
-        .order('creado_en', { ascending: false })
-        .limit(20);
+        .eq('tipo_id', tipoReporte.id)        // Filtrar por tipo (perdida/encontrada)
+        .eq('estado', 'AC')                   // Solo reportes activos
+        .order('creado_en', { ascending: false })  // Más recientes primero
+        .limit(20);                           // Máximo 20 reportes
 
+      // Manejo de errores
       if (error) {
         console.error('Error cargando reportes:', error);
         Alert.alert('Error', 'No se pudieron cargar los reportes');
         return;
       }
 
+      // Actualizar estado con los reportes obtenidos
       setReportes(data || []);
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', 'Ocurrió un error inesperado');
     } finally {
+      // Siempre ejecutar al final (éxito o error)
       setLoading(false);
       setRefreshing(false);
     }
   };
 
+  // ========== FUNCIÓN: Manejar el pull-to-refresh ==========
   const onRefresh = async () => {
     setRefreshing(true);
     await cargarReportes();
   };
 
+  // ========== FUNCIÓN: Formatear fecha de forma amigable ==========
   const formatearFecha = (fecha: string) => {
     const date = new Date(fecha);
     const now = new Date();
     const diffTime = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
+    // Mostrar formato relativo para fechas recientes
     if (diffDays === 0) {
       return 'Hoy';
     } else if (diffDays === 1) {
@@ -146,6 +170,7 @@ const ReportesMascotasPerdidas = () => {
     } else if (diffDays < 7) {
       return `${diffDays} días`;
     } else {
+      // Para fechas más antiguas, mostrar fecha completa
       return date.toLocaleDateString('es-AR', {
         day: '2-digit',
         month: '2-digit',
@@ -154,11 +179,15 @@ const ReportesMascotasPerdidas = () => {
     }
   };
 
+  // ========== FUNCIÓN: Obtener URL pública de una imagen en Supabase Storage ==========
   const getStoragePublicUrl = (path?: string | null): string | null => {
     if (!path) return null;
-    // Si ya es URL completa, devolverla
+    // Si ya es una URL completa (http/https), devolverla tal cual
     if (/^https?:\/\//i.test(path)) return path;
+    
+    // Generar URL pública desde Supabase Storage
     const { data } = supabase.storage.from('reportes-fotos').getPublicUrl(path);
+    
     if (!data?.publicUrl) {
       console.log("❌ No se pudo generar URL pública para:", path);
       return null;
@@ -167,43 +196,52 @@ const ReportesMascotasPerdidas = () => {
     return data?.publicUrl;
   };
 
+  // ========== FUNCIÓN: Obtener imagen de la mascota con sistema de fallback ==========
   const obtenerImagenMascota = (reporte: Reporte): string | null => {
-    // Priorizar foto principal de la mascota
+    // 1. PRIORIDAD 1: Foto principal de la mascota
     const principal = getStoragePublicUrl(reporte.mascota?.foto_principal_url || null);
     if (principal) {
       console.log("📸 Usando foto principal:", principal);
       return principal;
     }
     
-    // Si no hay foto principal, usar la primera foto del reporte
+    // 2. PRIORIDAD 2: Primera foto del reporte
     if (reporte.fotos_reportes && reporte.fotos_reportes.length > 0) {
       const fallback = getStoragePublicUrl(reporte.fotos_reportes[0].ruta_storage);
       console.log("📸 Usando foto de reporte:", fallback);
       return fallback;
     }
     
+    // 3. No hay imagen disponible
     console.log("⚠️ Reporte sin imagen:", reporte.id);
     return null;
   };
 
+  // ========== FUNCIÓN: Filtrar reportes según texto de búsqueda ==========
   const reportesFiltrados = reportes.filter(reporte => {
+    // Si no hay texto de búsqueda, mostrar todos
     if (!searchText) return true;
     
+    // Convertir todo a minúsculas para comparación case-insensitive
     const searchLower = searchText.toLowerCase();
     const nombreMascota = reporte.mascota?.nombre?.toLowerCase() || '';
     const titulo = reporte.titulo.toLowerCase();
     const descripcion = reporte.descripcion?.toLowerCase() || '';
     const raza = reporte.mascota?.raza?.toLowerCase() || '';
     
+    // Buscar coincidencias en cualquiera de los campos
     return nombreMascota.includes(searchLower) ||
            titulo.includes(searchLower) ||
            descripcion.includes(searchLower) ||
            raza.includes(searchLower);
   });
 
+  // ========== FUNCIÓN: Manejar botón de contactar ==========
   const handleContactar = (reporte: Reporte) => {
     const telefono = reporte.reportero.telefono;
+    
     if (telefono) {
+      // Mostrar confirmación antes de contactar
       Alert.alert(
         'Contactar',
         `¿Deseas contactar a ${reporte.reportero.nombre}?`,
@@ -212,7 +250,7 @@ const ReportesMascotasPerdidas = () => {
           { 
             text: 'Llamar', 
             onPress: () => {
-              // Aquí podrías abrir el marcador telefónico
+              // TODO: Aquí se podría integrar Linking para abrir el teléfono
               Alert.alert('Teléfono', telefono);
             }
           }
@@ -223,12 +261,14 @@ const ReportesMascotasPerdidas = () => {
     }
   };
 
+  // ========== FUNCIÓN: Renderizar una tarjeta de reporte ==========
   const renderReporte = (reporte: Reporte) => {
     const imagenUrl = obtenerImagenMascota(reporte);
     
     return (
       <View key={reporte.id} style={styles.reporteCard}>
         <View style={styles.reporteHeader}>
+          {/* COLUMNA 1: Imagen de la mascota */}
           <View style={styles.mascotaImagenContainer}>
             {imagenUrl ? (
               <Image
@@ -237,17 +277,21 @@ const ReportesMascotasPerdidas = () => {
                 onError={() => console.log('Error cargando imagen')}
               />
             ) : (
+              // Placeholder cuando no hay imagen
               <View style={[styles.mascotaImagen, styles.placeholderImagen]}>
                 <Ionicons name="paw" size={24} color={Colors.textTertiary} />
               </View>
             )}
           </View>
           
+          {/* COLUMNA 2: Información del reporte */}
           <View style={styles.reporteInfo}>
+            {/* Título del reporte */}
             <Text style={styles.reporteTitulo}>
               {reporte.titulo}
             </Text>
             
+            {/* Datos de la mascota */}
             {reporte.mascota && (
               <Text style={styles.mascotaInfo}>
                 {reporte.mascota.nombre} • {reporte.mascota.especie.nombre}
@@ -255,16 +299,19 @@ const ReportesMascotasPerdidas = () => {
               </Text>
             )}
             
+            {/* Descripción (máximo 2 líneas) */}
             <Text style={styles.reporteDescripcion} numberOfLines={2}>
               {reporte.descripcion}
             </Text>
             
+            {/* Ubicación de referencia */}
             {reporte.direccion_referencia && (
               <Text style={styles.ubicacion} numberOfLines={1}>
                 {reporte.direccion_referencia}
               </Text>
             )}
             
+            {/* Recompensa (si existe y es mayor a 0) */}
             {reporte.recompensa && reporte.recompensa > 0 && (
               <Text style={styles.recompensa}>
                 Recompensa: ${reporte.recompensa.toLocaleString('es-AR')}
@@ -272,11 +319,14 @@ const ReportesMascotasPerdidas = () => {
             )}
           </View>
           
+          {/* COLUMNA 3: Acciones */}
           <View style={styles.reporteAcciones}>
+            {/* Fecha formateada */}
             <Text style={styles.fechaReporte}>
               {formatearFecha(reporte.creado_en)}
             </Text>
             
+            {/* Botón de contactar */}
             <TouchableOpacity
               style={styles.contactarBtn}
               onPress={() => handleContactar(reporte)}
@@ -290,9 +340,10 @@ const ReportesMascotasPerdidas = () => {
     );
   };
 
+  // ========== RENDER PRINCIPAL ==========
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* ===== HEADER: Logo y botón de perfil ===== */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>RadarPet</Text>
         <TouchableOpacity style={styles.profileButton}>
@@ -300,7 +351,7 @@ const ReportesMascotasPerdidas = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Filtros */}
+      {/* ===== FILTROS: Perdidas / Encontradas ===== */}
       <View style={styles.filtros}>
         <TouchableOpacity
           style={[
@@ -333,12 +384,12 @@ const ReportesMascotasPerdidas = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Título de sección */}
+      {/* ===== TÍTULO DE SECCIÓN ===== */}
       <Text style={styles.seccionTitulo}>
         Reportes de {filtroActivo === 'perdidas' ? 'Mascotas Perdidas' : 'Mascotas Encontradas'}
       </Text>
 
-      {/* Buscador */}
+      {/* ===== BUSCADOR ===== */}
       <View style={styles.buscadorContainer}>
         <Ionicons name="search" size={20} color={Colors.textTertiary} style={styles.buscadorIcon} />
         <TextInput
@@ -350,13 +401,15 @@ const ReportesMascotasPerdidas = () => {
         />
       </View>
 
-      {/* Lista de reportes */}
+      {/* ===== LISTA DE REPORTES ===== */}
       {loading ? (
+        // Mostrar spinner mientras carga
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Cargando reportes...</Text>
         </View>
       ) : (
+        // Mostrar lista de reportes con pull-to-refresh
         <ScrollView
           style={styles.reportesList}
           refreshControl={
@@ -368,6 +421,7 @@ const ReportesMascotasPerdidas = () => {
           }
         >
           {reportesFiltrados.length === 0 ? (
+            // Estado vacío: no hay reportes
             <View style={styles.emptyContainer}>
               <Ionicons name="sad-outline" size={64} color={Colors.gray400} />
               <Text style={styles.emptyText}>
@@ -375,6 +429,7 @@ const ReportesMascotasPerdidas = () => {
               </Text>
             </View>
           ) : (
+            // Renderizar cada reporte
             reportesFiltrados.map(renderReporte)
           )}
         </ScrollView>
@@ -383,6 +438,9 @@ const ReportesMascotasPerdidas = () => {
   );
 };
 
+// ============================================
+// ESTILOS
+// ============================================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
