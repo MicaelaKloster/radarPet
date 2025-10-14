@@ -4,7 +4,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { supabase } from "@/lib/supabase";
 import { decode as base64ToArrayBuffer } from 'base64-arraybuffer';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image'; // Mejor rendimiento para imágenes
 import * as ImageManipulator from 'expo-image-manipulator'; // Para redimensionar imágenes
 import * as ImagePicker from "expo-image-picker";
@@ -48,8 +48,7 @@ function parseCoordenadas(texto: string): LatLng | null {
   return { latitude: lat, longitude: lng };
 }
 
-// Constante compatible con la nueva API (evita deprecations)
-const IMAGE_MEDIA_TYPES: any = ['images'];
+const IMAGE_MEDIA_TYPES = 'images';
 
 // 2. Helper para manejo de errores
 const handleError = (error: any, context: string = '') => {
@@ -244,7 +243,7 @@ const elegirFoto = async () => {
 
     console.log('[Reportes Perdidas] abrir galería...');
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: IMAGE_MEDIA_TYPES,
+      mediaTypes: IMAGE_MEDIA_TYPES as any,
       quality: 0.8,
       allowsEditing: true,
       aspect: [4, 3],
@@ -309,10 +308,7 @@ const subirFotoSiExiste = async (reporteId: string): Promise<boolean> => {
         .upload(path, blob, { contentType, upsert: true });
       if (uploadError) throw uploadError;
     } else {
-      // Nativo: usar FileSystem + base64 -> ArrayBuffer
-      const fileInfo = await FileSystem.getInfoAsync(foto.uri);
-      if (!fileInfo.exists) throw new Error('El archivo de imagen no existe');
-      console.log('[Reportes Perdidas] leyendo base64 (nativo)...', { size: fileInfo.size });
+      console.log('[Reportes Perdidas] leyendo base64 (nativo)...');
       const base64 = await FileSystem.readAsStringAsync(foto.uri, { encoding: FileSystem.EncodingType.Base64 });
       const arrayBuffer = base64ToArrayBuffer(base64);
       console.log('[Reportes Perdidas] subiendo a storage (nativo)...');

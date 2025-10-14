@@ -8,7 +8,7 @@ import { ThemedView } from "@/components/ThemedView"; // Vista que se adapta al 
 import { IconSymbol } from "@/components/ui/IconSymbol"; // Componente para mostrar íconos
 import { supabase } from "@/lib/supabase";
 import { decode as base64ToArrayBuffer } from 'base64-arraybuffer';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from "expo-image-picker";
@@ -44,8 +44,7 @@ async function withTimeout<T = any>(promise: PromiseLike<T>, ms: number, label: 
   }
 }
 
-// Definir tipos usando nueva API para evitar deprecations
-const IMAGE_MEDIA_TYPES: any = ['images'];
+const IMAGE_MEDIA_TYPES = 'images';
 
 const handleError = (error: any, context: string = '') => {
   console.error(`Error en ${context}:`, error);
@@ -183,7 +182,7 @@ export default function ReportFoundScreen() {
       }
       console.log('[Reporte Encontradas] abrir galería...');
       const result = await withTimeout(
-        ImagePicker.launchImageLibraryAsync({ mediaTypes: IMAGE_MEDIA_TYPES, quality: 0.8, allowsEditing: true, aspect: [4, 3] }),
+        ImagePicker.launchImageLibraryAsync({ mediaTypes: IMAGE_MEDIA_TYPES as any, quality: 0.8, allowsEditing: true, aspect: [4, 3] }),
         20000,
         'abrir galería'
       );
@@ -229,9 +228,7 @@ export default function ReportFoundScreen() {
         const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType, upsert: true });
         if (error) throw error;
       } else {
-        const info = await FileSystem.getInfoAsync(foto.uri);
-        if (!info.exists) throw new Error('La imagen no existe');
-        console.log('[Reporte Encontradas] leyendo base64 (nativo)...', { size: info.size });
+        console.log('[Reporte Encontradas] leyendo base64 (nativo)...');
         const base64 = await FileSystem.readAsStringAsync(foto.uri, { encoding: FileSystem.EncodingType.Base64 });
         const arrayBuffer = base64ToArrayBuffer(base64);
         console.log('[Reporte Encontradas] subiendo a storage (nativo)...');

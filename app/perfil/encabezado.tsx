@@ -2,10 +2,11 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { supabase } from '@/lib/supabase';
-import * as FileSystem from 'expo-file-system';
+import { decode as base64ToArrayBuffer } from 'base64-arraybuffer';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type Props = {
   nombre: string; 
@@ -28,7 +29,7 @@ export default function Encabezado ({ nombre, email, avatarUri, userId, onAvatar
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+      mediaTypes: 'images' as any, 
       allowsEditing: true, 
       aspect: [1, 1], 
       quality: 0.7, 
@@ -42,14 +43,20 @@ export default function Encabezado ({ nombre, email, avatarUri, userId, onAvatar
       const fileName = `${userId}.${extension}`;
       const filePath = `fotos-perfil/${fileName}`;
 
-      const base64 = await FileSystem.readAsStringAsync(file.uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      const fileBytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      let uploadData: any;
+      if (Platform.OS === 'web') {
+        const resp = await fetch(file.uri);
+        uploadData = await resp.blob();
+      } else {
+        const base64 = await FileSystem.readAsStringAsync(file.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        uploadData = base64ToArrayBuffer(base64);
+      }
 
       let { error } = await supabase.storage
         .from('fotos-perfil')
-        .upload(filePath, fileBytes, {
+        .upload(filePath, uploadData, {
           upsert: true, 
           contentType: file.mimeType || 'image/jpeg',
         });
