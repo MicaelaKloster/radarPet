@@ -1,4 +1,3 @@
-// Importaciones necesarias para React y componentes de React Native
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 // Componentes personalizados de la aplicación
@@ -6,7 +5,9 @@ import MiniMapaSelector, { Coord } from "@/components/MiniMapaSelector";
 import { ThemedText } from "@/components/ThemedText"; // Texto que se adapta al tema claro/oscuro
 import { ThemedView } from "@/components/ThemedView"; // Vista que se adapta al tema claro/oscuro
 import { IconSymbol } from "@/components/ui/IconSymbol"; // Componente para mostrar íconos
+// Cliente Supabase (BD + storage)
 import { supabase } from "@/lib/supabase";
+// Utilidades para manejo de imágenes y archivos
 import { decode as base64ToArrayBuffer } from 'base64-arraybuffer';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
@@ -14,7 +15,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 
-// Tipos faltantes
+
 type Catalogo = { id: number; nombre: string };
 type LatLng = { latitude: number; longitude: number };
 type FormData = {
@@ -30,7 +31,7 @@ type FormData = {
   fechaHoraHallazgo: string;
 };
 
-// Helper timeout
+// Helper timeout: rechaza si la promesa tarda más de "ms" milisegundos
 async function withTimeout<T = any>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> {
   let timeoutId: any;
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -45,6 +46,10 @@ async function withTimeout<T = any>(promise: PromiseLike<T>, ms: number, label: 
 }
 
 const IMAGE_MEDIA_TYPES = 'images';
+/**
+ * Muestra el error por consola y mediante alerta (web o móvil).
+ * Devuelve el propio error para que pueda ser lanzado de nuevo si se desea.
+ */
 
 const handleError = (error: any, context: string = '') => {
   console.error(`Error en ${context}:`, error);
@@ -57,8 +62,10 @@ const handleError = (error: any, context: string = '') => {
   return error;
 };
 
-// Validación relajada: aceptar cualquier formato de imagen
+// Validación relajada: se acepta cualquier formato de imagen
 const validarTipoImagen = (_uri: string): boolean => true;
+
+// Validar y parsear fecha/hora ingresada por el usuario
 
 function validarFecha(fechaString: string): string {
   const s = fechaString?.trim();
@@ -66,6 +73,7 @@ function validarFecha(fechaString: string): string {
   let parsed: Date | null = new Date(s);
   if (isNaN(parsed.getTime())) parsed = null;
   if (!parsed) {
+    // Si falla, probamos con formato “dd/mm/yyyy hh:mm”
     const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
     if (m) {
       const [, dd, mm, yyyy, hh = '0', min = '0'] = m;
@@ -74,6 +82,7 @@ function validarFecha(fechaString: string): string {
   }
   if (!parsed || isNaN(parsed.getTime())) throw new Error('Formato de fecha inválido.');
   if (parsed > new Date()) throw new Error('No se permiten fechas futuras');
+  //Lanza error si la cadena es inválida o representa una fecha futura.
   return parsed.toISOString();
 }
 
@@ -92,18 +101,18 @@ function parseCoordenadas(texto: string): LatLng | null {
 
 export default function ReportFoundScreen() {
   const [loading, setLoading] = useState({
-    catalogos: true,
-    publicando: false,
-    subiendoFoto: false,
-    obteniendoUbicacion: false,
+    catalogos: true, // Mientras cargamos especies/tamaños/sexos
+    publicando: false, // Al enviar el reporte
+    subiendoFoto: false, // Subida de foto a Supabase Storage
+    obteniendoUbicacion: false, // Cuando pedimos la posición actual al dispositivo
   });
-
+// Catálogos cargados desde la BD
   const [catalogos, setCatalogos] = useState({
     especies: [] as Catalogo[],
     tamanios: [] as Catalogo[],
     sexos: [] as Catalogo[],
   });
-
+//   Los datos que el usuario escribe en el formulario 
   const [formData, setFormData] = useState<FormData>({
     nombre: "",
     especieId: null,
@@ -116,17 +125,18 @@ export default function ReportFoundScreen() {
     descripcionUbicacion: "",
     fechaHoraHallazgo: "",
   });
-
+// Ubicación actual del usuario (si la obtiene)
   const [ubicacionActual, setUbicacionActual] = useState<LatLng | null>(null);
+// Foto seleccionada (si la hay)
   const [foto, setFoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
 
-  // Derivado: coords para el mapa desde el campo de texto
+  // Convierte el texto del campo “ultimaUbicacion” a coordenadas para pasarle al mini‑mapa
   const coordsForMap: Coord | null = useMemo(() => {
     const p = parseCoordenadas(formData.ultimaUbicacion);
     return p ? { lat: p.latitude, lng: p.longitude } : null;
   }, [formData.ultimaUbicacion]);
 
-  // Obtener mi ubicación y reflejarla en el formulario (hará zoom en el mapa)
+  // Obtener ubicación del usuario y reflejarla en el formulario (hará zoom en el mapa)
   const solicitarMiUbicacion = async () => {
     try {
       setLoading((p) => ({ ...p, obteniendoUbicacion: true }));
