@@ -479,12 +479,13 @@ export default function ReportFoundScreen() {
 
           <View style={styles.formField}>
             <ThemedText style={styles.fieldLabel}>Seleccioná la ubicación en el mapa</ThemedText>
-            <MiniMapaSelector
-              value={coordsForMap}
-              onChange={(c) => setFormData(p => ({ ...p, ultimaUbicacion: `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` }))}
-              height={220}
-              initialCenter={coordsForMap ?? (ubicacionActual ? { lat: ubicacionActual.latitude, lng: ubicacionActual.longitude } : undefined)}
-            />
+            <View style={styles.mapWrapper}>
+              <MiniMapaSelector
+                value={coordsForMap}
+                onChange={(c) => setFormData(p => ({ ...p, ultimaUbicacion: `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` }))}
+                initialCenter={coordsForMap ?? (ubicacionActual ? { lat: ubicacionActual.latitude, lng: ubicacionActual.longitude } : undefined)}
+              />
+            </View>
             <ThemedText style={styles.uploadingText}>Tocá el mapa para establecer latitud y longitud.</ThemedText>
             <TouchableOpacity style={styles.ubicacionButton} onPress={solicitarMiUbicacion} disabled={loading.publicando || loading.obteniendoUbicacion}>
               <ThemedText style={styles.ubicacionButtonText}>{loading.obteniendoUbicacion ? 'Obteniendo ubicación...' : 'Usar mi ubicación actual'}</ThemedText>
@@ -646,5 +647,5 @@ const styles = StyleSheet.create({
   submitButton: { backgroundColor: '#4ECDC4', borderRadius: 12, padding: 18, alignItems: 'center' },
   submitButtonDisabled: { backgroundColor: '#CCC', opacity: 0.6 },
   submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  // estilos de mapa removidos
+  mapWrapper: { height: 300, borderRadius: 12, overflow: 'hidden', backgroundColor: '#FFFFFF', ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 }, android: { elevation: 2 } }) },
 });
