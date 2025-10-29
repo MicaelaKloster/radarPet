@@ -6,6 +6,7 @@ import { useAppFonts } from '@/hooks/useFonts';
 import { supabase } from '@/lib/supabase';
 // Librería de iconos de Expo
 import { Ionicons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,  // Spinner de carga
@@ -42,6 +43,7 @@ interface Reporte {
     foto_principal_url: string | null;
   } | null;
   reportero: {                              // Persona que hizo el reporte
+    id: string;
     nombre: string;
     telefono: string | null;
   };
@@ -60,7 +62,8 @@ const ReportesMascotasPerdidas = () => {
   const [refreshing, setRefreshing] = useState(false);                // Estado de refresh
   const [searchText, setSearchText] = useState('');                   // Texto de búsqueda
   const [filtroActivo, setFiltroActivo] = useState<'perdidas' | 'encontradas'>('perdidas'); // Filtro activo
-  
+  const [usuarioActual, setUsuarioActual] = useState<string | null>(null);
+
   // Cargar fuentes personalizadas
   const fontsLoaded = useAppFonts();
   
@@ -75,8 +78,21 @@ const ReportesMascotasPerdidas = () => {
 
   // ========== EFECTO: Cargar reportes cuando cambia el filtro ==========
   useEffect(() => {
+    obtenerUsuarioActual();
     cargarReportes();
   }, [filtroActivo]);
+
+  // ========== FUNCIÓN: Obtener ID del usuario actual ==========
+  const obtenerUsuarioActual = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUsuarioActual(user.id);
+      }
+    } catch (error) {
+      console.error('Error obteniendo usuario actual:', error);
+    }
+  };
 
   // ========== FUNCIÓN: Cargar reportes desde Supabase ==========
   const cargarReportes = async () => {
@@ -118,6 +134,7 @@ const ReportesMascotasPerdidas = () => {
             )
           ),
           reportero:reportero_id (
+            id,
             nombre,
             telefono
           ),
@@ -241,24 +258,108 @@ const ReportesMascotasPerdidas = () => {
     const telefono = reporte.reportero.telefono;
     
     if (telefono) {
-      // Mostrar confirmación antes de contactar
       Alert.alert(
-        'Contactar',
-        `¿Deseas contactar a ${reporte.reportero.nombre}?`,
+        'Contactar a ' + reporte.reportero.nombre,
+        '¿Cómo deseas contactar?',
         [
           { text: 'Cancelar', style: 'cancel' },
-          { 
-            text: 'Llamar', 
-            onPress: () => {
-              // TODO: Aquí se podría integrar Linking para abrir el teléfono
-              Alert.alert('Teléfono', telefono);
-            }
-          }
+          { text: 'Llamar', onPress: () => handleLlamar(telefono) },
+          { text: 'Mensaje de Texto', onPress: () => handleEnviarSMS(telefono, reporte) }
         ]
       );
     } else {
       Alert.alert('Sin contacto', 'No hay información de contacto disponible');
     }
+  };
+
+  // ========== FUNCIÓN: Abrir marcador telefónico ==========
+  const handleLlamar = async (telefono: string) => {
+    const url = `tel:${telefono}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'No se puede realizar llamadas en este dispositivo');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo abrir el marcador telefónico');
+    }
+  };
+
+  // ========== FUNCIÓN: Enviar SMS ==========
+  const handleEnviarSMS = async (telefono: string, reporte: Reporte) => {
+    const mensaje = `Hola ${reporte.reportero.nombre}, me interesa contactarte sobre el reporte: "${reporte.titulo}". ¿Podrías ayudarme con más información?`;
+    const url = `sms:${telefono}?body=${encodeURIComponent(mensaje)}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'No se puede enviar SMS en este dispositivo');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo abrir la aplicación de mensajes');
+    }
+  };
+
+  // ========== FUNCIÓN: Marcar reporte como resuelto ==========
+  const handleMarcarResuelto = async (reporteId: string, reporteroId: string) => {
+    if (!usuarioActual) {
+      Alert.alert('Error', 'No se pudo verificar tu identidad');
+      return;
+    }
+
+    if (usuarioActual !== reporteroId) {
+      Alert.alert(
+        'No autorizado',
+        'Solo la persona que reportó la mascota puede marcar este caso como resuelto.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Marcar como resuelto',
+      '¿Estás seguro de que deseas marcar este caso como resuelto? Se ocultará de la lista.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data: estadoResuelto } = await supabase
+                .from('estados_reportes')
+                .select('id')
+                .eq('nombre', 'resuelto')
+                .eq('estado', 'AC')
+                .maybeSingle();
+
+              if (!estadoResuelto) {
+                Alert.alert('Error', 'No se pudo encontrar el estado resuelto');
+                return;
+              }
+
+              const { error } = await supabase
+                .from('reportes')
+                .update({ estado_id: estadoResuelto.id })
+                .eq('id', reporteId);
+
+              if (error) {
+                Alert.alert('Error', 'No se pudo actualizar el reporte');
+                return;
+              }
+
+              setReportes(reportes.filter(r => r.id !== reporteId));
+              Alert.alert('Éxito', 'Reporte marcado como resuelto');
+            } catch (error) {
+              console.error('Error:', error);
+              Alert.alert('Error', 'Ocurrió un error inesperado');
+            }
+          }
+        }
+      ]
+    );
   };
 
   // ========== FUNCIÓN: Renderizar una tarjeta de reporte ==========
@@ -333,6 +434,15 @@ const ReportesMascotasPerdidas = () => {
             >
               <Ionicons name="call" size={16} color="#fff" />
               <Text style={styles.contactarBtnText}>Contactar</Text>
+            </TouchableOpacity>
+
+            {/* Botón de marcar resuelto */}
+            <TouchableOpacity
+              style={styles.resueltoBtn}
+              onPress={() => handleMarcarResuelto(reporte.id, reporte.reportero.id)}
+            >
+              <Ionicons name="checkmark-circle" size={16} color="#fff" />
+              <Text style={styles.resueltoBtnText}>Resuelto</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -593,6 +703,20 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   contactarBtnText: {
+    ...Typography.styles.caption,
+    color: Colors.textLight,
+    fontFamily: Typography.fontFamily.semiBold,
+  },
+  resueltoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.success,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: BorderRadius.md,
+    gap: 4,
+  },
+  resueltoBtnText: {
     ...Typography.styles.caption,
     color: Colors.textLight,
     fontFamily: Typography.fontFamily.semiBold,
