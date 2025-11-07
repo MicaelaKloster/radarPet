@@ -1,4 +1,4 @@
-import { EmailIcon, GoogleIcon, LockIcon } from '@/components/Icons';
+import { EmailIcon, EyeIcon, EyeOffIcon, GoogleIcon, LockIcon } from '@/components/Icons';
 import { loginWithGoogle, supabase } from '@/lib/supabase';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -13,6 +13,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({ email: '', password: '' });
 
   const validateEmail = (email: string) => {
@@ -104,13 +105,16 @@ export default function LoginScreen() {
             <TextInput 
               style={styles.inputWithIcon} 
               placeholder="Contraseña" 
-              secureTextEntry 
+              secureTextEntry={!showPassword}
               value={password} 
               onChangeText={(text) => {
                 setPassword(text);
                 if (errors.password) setErrors({...errors, password: ''});
               }}
             />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              {showPassword ? <EyeOffIcon width={20} height={20} color="#666" /> : <EyeIcon width={20} height={20} color="#666" />}
+            </TouchableOpacity>
           </View>
           {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
           

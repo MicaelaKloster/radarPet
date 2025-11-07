@@ -1,4 +1,4 @@
-import { EmailIcon, GoogleIcon, LockIcon, MapIcon, PhoneIcon, UserIcon } from '@/components/Icons';
+import { EmailIcon, EyeIcon, EyeOffIcon, GoogleIcon, LockIcon, MapIcon, PhoneIcon, UserIcon } from '@/components/Icons';
 import { registerWithGoogle, supabase } from '@/lib/supabase';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -15,6 +15,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [telefono, setTelefono] = useState('');
   const [ciudad, setCiudad] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({
     nombre: '',
@@ -230,13 +231,16 @@ export default function RegisterScreen() {
             <TextInput 
               style={styles.inputWithIcon} 
               placeholder="Contraseña (mín. 6 caracteres)" 
-              secureTextEntry 
+              secureTextEntry={!showPassword}
               value={password} 
               onChangeText={(text) => {
                 setPassword(text);
                 if (errors.password) setErrors({...errors, password: ''});
               }}
             />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              {showPassword ? <EyeOffIcon width={20} height={20} color="#666" /> : <EyeIcon width={20} height={20} color="#666" />}
+            </TouchableOpacity>
           </View>
           {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
           
