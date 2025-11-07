@@ -125,7 +125,7 @@ export default function LoginScreen() {
           
           <TouchableOpacity style={styles.oauthGoogle} onPress={loginGoogle} disabled={loading}>
             <GoogleIcon width={20} height={20} />
-            <Text style={styles.buttonText}>Ingresar con Google</Text>
+            <Text style={styles.buttonTextGoogle}>Ingresar con Google</Text>
           </TouchableOpacity>
           
           <Link href="/(auth)/register" asChild>
@@ -144,7 +144,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#02aaad',
   },
   scrollContent: {
     flexGrow: 1,
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: screenHeight > 700 ? 32 : 28,
     fontWeight: 'bold',
-    color: '#2CBDAA',
+    color: '#fff',
     textAlign: 'center',
   },
   form: {
@@ -175,6 +175,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
@@ -196,7 +197,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   buttonPrimary: {
-    backgroundColor: '#2CBDAA',
+    backgroundColor: '#012531',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -206,7 +207,7 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
   oauthGoogle: {
-    backgroundColor: '#249A8A',
+    backgroundColor: '#f5f5f5',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -221,9 +222,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 8,
   },
+  buttonTextGoogle: {
+    color: '#012531',
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: 8,
+  },
   link: {
     marginTop: 16,
-    color: '#2CBDAA',
+    color: '#fff',
     textAlign: 'center',
     fontSize: 16,
     paddingVertical: 10,
