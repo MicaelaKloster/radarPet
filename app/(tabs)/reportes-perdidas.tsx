@@ -21,6 +21,7 @@ import {
   View,
 } from "react-native";
 
+
 // Helper para timeout de promesas (evita quedarse colgado sin feedback)
 async function withTimeout<T = any>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> {
   let timeoutId: any;
@@ -163,7 +164,8 @@ export default function ReportesPerdidasScreen() {
     return p ? { lat: p.latitude, lng: p.longitude } : null;
   }, [formData.ultimaUbicacion]);
 
-  // 10. Cargar catálogos (optimizado con Promise.allSettled para mejor manejo de errores)
+
+
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
@@ -455,6 +457,8 @@ const publicar = async () => {
     console.log('[Reportes Perdidas] estado foto antes de subir:', !!foto, foto?.uri);
     const ok = await withTimeout(subirFotoSiExiste(nuevoReporte.id), 30000, 'subir foto');
     console.log('[Reportes Perdidas] foto subida:', ok);
+
+
 
     if (Platform.OS === 'web') (globalThis as any).alert?.('¡Reporte publicado!'); else Alert.alert('¡Gracias!', 'Tu reporte de mascota perdida fue publicado.');
 

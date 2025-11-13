@@ -44,26 +44,31 @@ export default function LoginScreen() {
     if (!validateForm()) return;
     
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) Alert.alert('Error', error.message); else router.replace('/(tabs)');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        Alert.alert('Error', error.message);
+        setLoading(false);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Error al iniciar sesión');
+      setLoading(false);
+    }
   };
 
   const loginGoogle = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const { error } = await loginWithGoogle();
       if (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-        Alert.alert('Error', errorMessage);
-      } else {
-        router.replace('/(tabs)');
+        if (error.message !== 'Cancelado') {
+          Alert.alert('Error', error.message);
+        }
       }
+      setLoading(false);
     } catch (err) {
-      console.error('Error en loginGoogle:', err);
-      Alert.alert('Error', 'Error al iniciar sesión con Google');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Función temporal para debug - mostrar URL de redirección

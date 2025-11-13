@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { Image } from 'expo-image';
 import * as Location from 'expo-location';
@@ -16,6 +16,14 @@ export type ReportMarker = {
 
 function parseWKTPoint(wkt?: string | null): { lat: number; lng: number } | null {
   if (!wkt) return null;
+  
+  if (typeof wkt === 'string' && wkt.includes(',')) {
+    const parts = wkt.split(',').map(p => parseFloat(p.trim()));
+    if (parts.length === 2 && !Number.isNaN(parts[0]) && !Number.isNaN(parts[1])) {
+      return { lat: parts[0], lng: parts[1] };
+    }
+  }
+  
   const m = wkt.match(/POINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)/i);
   if (!m) return null;
   const lon = parseFloat(m[1]);
@@ -50,18 +58,19 @@ export default function MapaListado({ height = undefined }: { height?: number })
         setLoading(true);
         // Obtener IDs de tipos
         const [tipoPerdidaRes, tipoEncontradaRes] = await Promise.all([
-          supabase.from('tipos_reportes').select('id').eq('nombre', 'perdida').maybeSingle(),
-          supabase.from('tipos_reportes').select('id').eq('nombre', 'encontrada').maybeSingle(),
+          supabase.from('tipos_reportes').select('id').eq('nombre', 'perdida').eq('estado', 'AC').maybeSingle(),
+          supabase.from('tipos_reportes').select('id').eq('nombre', 'encontrada').eq('estado', 'AC').maybeSingle(),
         ]);
         const perdidaId = (tipoPerdidaRes.data as any)?.id;
         const encontradaId = (tipoEncontradaRes.data as any)?.id;
+        console.log('Tipos:', { perdidaId, encontradaId });
 
-        const { data: reportes, error } = await supabase
-          .from('reportes')
-          .select('id,tipo_id,ubicacion,titulo')
-          .eq('estado', 'AC')
-          .in('tipo_id', [perdidaId, encontradaId].filter(Boolean) as number[])
-          .limit(500);
+        const tiposIds = [perdidaId, encontradaId].filter(Boolean) as number[];
+        const { data: reportes, error } = await supabase.rpc('obtener_reportes_con_coordenadas', {
+          p_tipos_ids: tiposIds,
+          p_limite: 500
+        });
+        console.log('Reportes:', reportes?.length, error);
         if (error) throw error;
 
         const { data: fotos } = await supabase
@@ -79,11 +88,11 @@ export default function MapaListado({ height = undefined }: { height?: number })
 
         const items: ReportMarker[] = [];
         (reportes as any[])?.forEach(r => {
-          const p = parseWKTPoint(r.ubicacion);
-          if (!p) return;
+          if (!r.lat || !r.lng) return;
           const tipo: 'perdida' | 'encontrada' = r.tipo_id === perdidaId ? 'perdida' : 'encontrada';
-          items.push({ id: String(r.id), lat: p.lat, lng: p.lng, tipo, titulo: r.titulo, fotoUrl: fotoMap.get(String(r.id)) || null });
+          items.push({ id: String(r.id), lat: r.lat, lng: r.lng, tipo, titulo: r.titulo, fotoUrl: fotoMap.get(String(r.id)) || null });
         });
+        console.log('Marcadores:', items.length);
         setMarkers(items);
 
         // Ajustar a los marcadores
@@ -109,7 +118,18 @@ export default function MapaListado({ height = undefined }: { height?: number })
       }
     };
     load();
-  }, [userLocation]);
+
+    const channel = supabase
+      .channel('reportes-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reportes' }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, []);
 
   const initialRegion = useMemo(() => {
     if (userLocation) {
@@ -138,6 +158,16 @@ export default function MapaListado({ height = undefined }: { height?: number })
           </Marker>
         ))}
       </MapView>
+      <View style={styles.legend}>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+          <Text style={styles.legendText}>Perdidas</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: '#22c55e' }]} />
+          <Text style={styles.legendText}>Encontradas</Text>
+        </View>
+      </View>
       {loading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#4ECDC4" />
@@ -153,4 +183,8 @@ const styles = StyleSheet.create({
   pin: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 3, backgroundColor: '#fff' },
   thumb: { width: '100%', height: '100%' },
   thumbPlaceholder: { backgroundColor: '#E5E7EB' },
+  legend: { position: 'absolute', bottom: 10, left: 10, backgroundColor: 'rgba(255,255,255,0.95)', padding: 8, borderRadius: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', marginVertical: 2 },
+  legendDot: { width: 12, height: 12, borderRadius: 6, marginRight: 6 },
+  legendText: { fontSize: 12, color: '#333', fontWeight: '500' },
 });

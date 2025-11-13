@@ -134,20 +134,23 @@ export default function RegisterScreen() {
       };
     }
     
-    setLoading(true);
     try {
+      setLoading(true);
       const { error } = await registerWithGoogle();
       if (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-        Alert.alert('Error', errorMessage);
-      } else {
-        router.replace('/(tabs)');
+        setLoading(false);
+        if (error.message !== 'Cancelado') {
+          Alert.alert('Error', error.message);
+        }
+        return;
       }
+      setLoading(false);
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
     } catch (err) {
-      console.error('Error en registerGoogle:', err);
-      Alert.alert('Error', 'Error al registrarse con Google');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

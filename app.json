@@ -23,8 +23,11 @@
       "package": "com.radarpet.app",
       "permissions": [
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
-      ]
+        "ACCESS_NETWORK_STATE",
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+  ]
     },
     "web": {
       "bundler": "metro",

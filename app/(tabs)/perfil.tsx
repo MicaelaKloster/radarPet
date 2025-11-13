@@ -299,12 +299,7 @@ export default function ProfileScreen() {
     };
 
     load();
-
-    const { data: sub } = supabase.auth.onAuthStateChange(() => load());
-    return () => {
-      sub.subscription.unsubscribe();
-    };
-  }, [userId]);
+  }, []);
 
   const handleAvatarChange = (newUrl: string) => {
     setAvatarUri(newUrl);
@@ -314,27 +309,14 @@ export default function ProfileScreen() {
     if (loggingOut) return;
     setLoggingOut(true);
 
-    const { error } = await supabase.auth.signOut({ scope: 'global' });
-    if (error) {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.replace('/(auth)/login');
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
       setLoggingOut(false);
-      Alert.alert('Error al cerrar sesión', error.message);
-      return;
     }
-
-    const after = await supabase.auth.getSession();
-    if (after.data.session) {
-      try {
-        if (Platform.OS === 'web' && typeof window !== 'undefined') {
-          Object.keys(localStorage).forEach((k) => {
-            if (k.startsWith('sb-')) localStorage.removeItem(k);
-          });
-        }
-      } catch {}
-    }
-
-    (globalThis as any).__pendingProfileData = undefined;
-    router.replace('/(auth)/login');
-    setLoggingOut(false);
   };
 
   const formatDate = (iso?: string | null) => {
@@ -496,10 +478,10 @@ export default function ProfileScreen() {
         <View style={styles.menuItem}>
           <TouchableOpacity
             style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
-            onPress={() => router.push('/perfil/notificaciones')}
+            onPress={() => router.push('/perfil/privacidad')}
           >
-            <IconSymbol size={20} name="shield.fill" color="#666" />
-            <ThemedText style={styles.menuText}>Privacidad</ThemedText>
+            <IconSymbol size={20} name="envelope.fill" color="#666" />
+            <ThemedText style={styles.menuText}>Correo</ThemedText>
             <IconSymbol size={16} name="chevron.right" color="#999" />
           </TouchableOpacity>
         </View>
