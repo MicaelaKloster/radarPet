@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import * as Linking from 'expo-linking';
-import * as WebBrowser from 'expo-web-browser';
+import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 
 // Completar la sesión de WebBrowser cuando sea necesario
@@ -36,11 +36,11 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 if (Platform.OS !== "web") {
   const handleDeepLink = (url: string) => {
     // Extraer los parámetros de la URL
-    if (url.includes('#access_token=')) {
-      const params = new URLSearchParams(url.split('#')[1]);
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-      
+    if (url.includes("#access_token=")) {
+      const params = new URLSearchParams(url.split("#")[1]);
+      const accessToken = params.get("access_token");
+      const refreshToken = params.get("refresh_token");
+
       if (accessToken && refreshToken) {
         supabase.auth.setSession({
           access_token: accessToken,
@@ -52,10 +52,10 @@ if (Platform.OS !== "web") {
 
   // Configurar el listener de enlaces profundos
   const setupDeepLinkListener = () => {
-    const subscription = Linking.addEventListener('url', (event) => {
+    const subscription = Linking.addEventListener("url", (event) => {
       handleDeepLink(event.url);
     });
-    
+
     return subscription;
   };
 
@@ -74,19 +74,21 @@ if (Platform.OS !== "web") {
 
 const getRedirectTo = () => {
   if (Platform.OS === "web") {
-    return typeof window !== "undefined" ? window.location.origin + '/auth/callback' : "";
+    return typeof window !== "undefined"
+      ? window.location.origin + "/auth/callback"
+      : "";
   }
-  
+
   // Para móviles - usar IP local para desarrollo más estable
   if (__DEV__) {
     const ip = DEV_IP;
     const redirectUri = `exp://${ip}:8081/--/auth/callback`;
-    console.log('Redirect URI para desarrollo:', redirectUri);
+    console.log("Redirect URI para desarrollo:", redirectUri);
     return redirectUri;
   }
-  
+
   // Para producción (app compilada)
-  return 'radarpet://auth/callback';
+  return "radarpet://auth/callback";
 };
 
 export const loginWithGoogle = async () => {
@@ -94,18 +96,18 @@ export const loginWithGoogle = async () => {
     if (Platform.OS === "web") {
       // Para web, usar el método estándar
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: "google",
         options: {
           redirectTo: getRedirectTo(),
           queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
+            access_type: "offline",
+            prompt: "consent",
           },
         },
       });
 
       if (error) {
-        console.error('Error en signInWithOAuth (web):', error);
+        console.error("Error en signInWithOAuth (web):", error);
         throw error;
       }
 
@@ -113,67 +115,78 @@ export const loginWithGoogle = async () => {
     } else {
       // Para móviles, usar WebBrowser para abrir la URL de autenticación
       const redirectTo = getRedirectTo();
-      
+
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: "google",
         options: {
           redirectTo: redirectTo,
           queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
+            access_type: "offline",
+            prompt: "consent",
           },
         },
       });
 
       if (error) {
-        console.error('Error generando URL de OAuth:', error);
+        console.error("Error generando URL de OAuth:", error);
         throw error;
       }
 
       if (data.url) {
         // Abrir el navegador con la URL de autenticación
         const result = await WebBrowser.openAuthSessionAsync(
-          data.url, 
+          data.url,
           redirectTo
         );
 
-        if (result.type === 'success' && result.url) {
+        if (result.type === "success" && result.url) {
           // Manejar la URL de retorno
           const returnUrl = result.url;
-          
+
           // Extraer tokens de la URL de retorno
-          if (returnUrl.includes('#access_token=') || returnUrl.includes('?access_token=')) {
+          if (
+            returnUrl.includes("#access_token=") ||
+            returnUrl.includes("?access_token=")
+          ) {
             const url = new URL(returnUrl);
             const fragment = url.hash || url.search;
-            const params = new URLSearchParams(fragment.replace('#', '').replace('?', ''));
-            
-            const access_token = params.get('access_token');
-            const refresh_token = params.get('refresh_token');
-            
+            const params = new URLSearchParams(
+              fragment.replace("#", "").replace("?", "")
+            );
+
+            const access_token = params.get("access_token");
+            const refresh_token = params.get("refresh_token");
+
             if (access_token && refresh_token) {
               const { error: sessionError } = await supabase.auth.setSession({
                 access_token,
                 refresh_token,
               });
-              
+
               if (sessionError) {
                 throw sessionError;
               }
-              
+
               return { data: { user: null, session: null }, error: null };
             }
           }
         }
 
-        if (result.type === 'cancel') {
-          return { data: null, error: new Error('Autenticación cancelada por el usuario') };
+        if (result.type === "cancel") {
+          return {
+            data: null,
+            error: new Error("Autenticación cancelada por el usuario"),
+          };
         }
       }
 
-      return { data: null, error: new Error('No se pudo obtener la URL de autenticación') };
+      return {
+        data: null,
+        error: new Error("No se pudo obtener la URL de autenticación"),
+      };
     }
   } catch (error) {
-    console.error('Error en loginWithGoogle:', error);
+    console.error("Error en loginWithGoogle:", error);
     return { data: null, error };
   }
 };
