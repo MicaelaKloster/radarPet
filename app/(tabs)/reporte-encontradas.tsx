@@ -748,24 +748,25 @@ export default function ReportFoundScreen() {
               Seleccioná la ubicación en el mapa
             </ThemedText>
             <MiniMapaSelector
-              value={coordsForMap}
-              onChange={(c) =>
-                setFormData((p) => ({
-                  ...p,
-                  ultimaUbicacion: `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`,
-                }))
-              }
-              height={220}
-              initialCenter={
-                coordsForMap ??
-                (ubicacionActual
-                  ? {
-                      lat: ubicacionActual.latitude,
-                      lng: ubicacionActual.longitude,
-                    }
-                  : undefined)
-              }
-            />
+  value={coordsForMap}
+  onChange={(c) =>
+    setFormData((p) => ({
+      ...p,
+      ultimaUbicacion: `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`,
+    }))
+  }
+  height={220}
+  initialCenter={
+    coordsForMap ??
+    (ubicacionActual
+      ? {
+          lat: ubicacionActual.latitude,
+          lng: ubicacionActual.longitude,
+        }
+      : undefined)
+  }
+/>
+
             <ThemedText style={styles.uploadingText}>
               Tocá el mapa para establecer latitud y longitud.
             </ThemedText>
@@ -1094,13 +1095,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   buttonContainer: { paddingVertical: 20, paddingBottom: 40 },
-  submitButton: {
-    backgroundColor: "#4ECDC4",
-    borderRadius: 12,
-    padding: 18,
-    alignItems: "center",
-  },
-  submitButtonDisabled: { backgroundColor: "#CCC", opacity: 0.6 },
+
+  submitButton: { backgroundColor: '#4ECDC4', borderRadius: 12, padding: 18, alignItems: 'center' },
+  submitButtonDisabled: { backgroundColor: '#CCC', opacity: 0.6 },
   submitButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
-  // estilos de mapa removidos
+
 });

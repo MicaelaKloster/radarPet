@@ -21,6 +21,7 @@ import {
   View,
 } from "react-native";
 
+
 // Helper para timeout de promesas (evita quedarse colgado sin feedback)
 async function withTimeout<T = any>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> {
   let timeoutId: any;
@@ -163,7 +164,8 @@ export default function ReportesPerdidasScreen() {
     return p ? { lat: p.latitude, lng: p.longitude } : null;
   }, [formData.ultimaUbicacion]);
 
-  // 10. Cargar catálogos (optimizado con Promise.allSettled para mejor manejo de errores)
+
+
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
@@ -456,6 +458,8 @@ const publicar = async () => {
     const ok = await withTimeout(subirFotoSiExiste(nuevoReporte.id), 30000, 'subir foto');
     console.log('[Reportes Perdidas] foto subida:', ok);
 
+
+
     if (Platform.OS === 'web') (globalThis as any).alert?.('¡Reporte publicado!'); else Alert.alert('¡Gracias!', 'Tu reporte de mascota perdida fue publicado.');
 
     // Reset
@@ -570,7 +574,7 @@ return (
           <MiniMapaSelector
             value={coordsForMap}
             onChange={(c) => setFormData(p => ({ ...p, ultimaUbicacion: `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` }))}
-            height={220}
+            height={300}
             initialCenter={coordsForMap ?? (ubicacionActual ? { lat: ubicacionActual.latitude, lng: ubicacionActual.longitude } : undefined)}
           />
           <ThemedText style={styles.uploadingText}>Tocá el mapa para establecer latitud y longitud.</ThemedText>

@@ -1,11 +1,41 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import React, { useState } from 'react';
-import { StyleSheet, Switch, View } from 'react-native';
+import * as Location from 'expo-location';
+import React, { useEffect, useState } from 'react';
+import { Alert, Linking, Platform, StyleSheet, Switch, View } from 'react-native';
 
 export default function LocationSettings() {
   const [compartirUbicacion, setCompartirUbicacion] = useState(true);
-  const [ubicacionPrecisa, setUbicacionPrecisa] = useState(false);
+  const [ubicacionPrecisa, setUbicacionPrecisa] = useState(true);
+
+  useEffect(() => {
+    activarGPS();
+  }, []);
+
+  const activarGPS = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permiso de ubicación',
+          'Activa el GPS en la configuración del dispositivo',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Abrir configuración', onPress: () => Linking.openSettings() }
+          ]
+        );
+      }
+    } catch (error) {
+      console.log('Error activando GPS:', error);
+    }
+  };
+
+  const handleUbicacionPrecisa = async (value: boolean) => {
+    if (value) {
+      await activarGPS();
+    }
+    setUbicacionPrecisa(value);
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -16,7 +46,7 @@ export default function LocationSettings() {
       </View>
       <View style={styles.row}>
         <ThemedText>Usar ubicación precisa</ThemedText>
-        <Switch value={ubicacionPrecisa} onValueChange={setUbicacionPrecisa} />
+        <Switch value={ubicacionPrecisa} onValueChange={handleUbicacionPrecisa} />
       </View>
     </ThemedView>
   );

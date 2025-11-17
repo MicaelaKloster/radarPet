@@ -1,4 +1,4 @@
-import { EmailIcon, GoogleIcon, LockIcon } from '@/components/Icons';
+import { EmailIcon, EyeIcon, EyeOffIcon, GoogleIcon, LockIcon } from '@/components/Icons';
 import { loginWithGoogle, supabase } from '@/lib/supabase';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -13,6 +13,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({ email: '', password: '' });
 
   const validateEmail = (email: string) => {
@@ -43,26 +44,31 @@ export default function LoginScreen() {
     if (!validateForm()) return;
     
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) Alert.alert('Error', error.message); else router.replace('/(tabs)');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        Alert.alert('Error', error.message);
+        setLoading(false);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Error al iniciar sesión');
+      setLoading(false);
+    }
   };
 
   const loginGoogle = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const { error } = await loginWithGoogle();
       if (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-        Alert.alert('Error', errorMessage);
-      } else {
-        router.replace('/(tabs)');
+        if (error.message !== 'Cancelado') {
+          Alert.alert('Error', error.message);
+        }
       }
+      setLoading(false);
     } catch (err) {
-      console.error('Error en loginGoogle:', err);
-      Alert.alert('Error', 'Error al iniciar sesión con Google');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Función temporal para debug - mostrar URL de redirección
@@ -104,13 +110,16 @@ export default function LoginScreen() {
             <TextInput 
               style={styles.inputWithIcon} 
               placeholder="Contraseña" 
-              secureTextEntry 
+              secureTextEntry={!showPassword}
               value={password} 
               onChangeText={(text) => {
                 setPassword(text);
                 if (errors.password) setErrors({...errors, password: ''});
               }}
             />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              {showPassword ? <EyeOffIcon width={20} height={20} color="#666" /> : <EyeIcon width={20} height={20} color="#666" />}
+            </TouchableOpacity>
           </View>
           {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
           
@@ -121,7 +130,7 @@ export default function LoginScreen() {
           
           <TouchableOpacity style={styles.oauthGoogle} onPress={loginGoogle} disabled={loading}>
             <GoogleIcon width={20} height={20} />
-            <Text style={styles.buttonText}>Ingresar con Google</Text>
+            <Text style={styles.buttonTextGoogle}>Ingresar con Google</Text>
           </TouchableOpacity>
           
           <Link href="/(auth)/register" asChild>
@@ -140,7 +149,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#02aaad',
   },
   scrollContent: {
     flexGrow: 1,
@@ -160,7 +169,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: screenHeight > 700 ? 32 : 28,
     fontWeight: 'bold',
-    color: '#2CBDAA',
+    color: '#fff',
     textAlign: 'center',
   },
   form: {
@@ -171,6 +180,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
@@ -192,7 +202,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   buttonPrimary: {
-    backgroundColor: '#2CBDAA',
+    backgroundColor: '#012531',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -202,7 +212,7 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
   oauthGoogle: {
-    backgroundColor: '#249A8A',
+    backgroundColor: '#f5f5f5',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -217,9 +227,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 8,
   },
+  buttonTextGoogle: {
+    color: '#012531',
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: 8,
+  },
   link: {
     marginTop: 16,
-    color: '#2CBDAA',
+    color: '#fff',
     textAlign: 'center',
     fontSize: 16,
     paddingVertical: 10,

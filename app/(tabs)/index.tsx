@@ -1,44 +1,40 @@
-// Importaciones necesarias para React y componentes de React Native
-import { useRouter } from "expo-router";
-import React from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
 
-// Componentes personalizados de la aplicación
-import MapaListado from "@/components/MapaListado"; // Componente del mapa interactivo
-import { ThemedText } from "@/components/ThemedText"; // Componente de texto que se adapta al tema
-import { ThemedView } from "@/components/ThemedView"; // Componente de vista que se adapta al tema
-import { IconSymbol } from "@/components/ui/IconSymbol"; // Componente para mostrar íconos
+import MapaListado from "@/components/MapaListado";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { suscribirseAReportes } from '@/lib/subscriptions';
 
-/**
- * Pantalla principal de la aplicación que muestra el mapa y acciones rápidas
- * Esta pantalla es la entrada principal de la aplicación y muestra un mapa interactivo
- * con reportes de mascotas perdidas y encontradas, además de acciones rápidas para
- * reportar mascotas perdidas o encontradas.
- */
 export default function MapScreen() {
-  // Hook para la navegación entre pantallas
   const router = useRouter();
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  /**
-   * Navega a la pantalla de reportar mascota perdida
-   * Esta función es llamada cuando el usuario presiona el botón de "Reportar Perdida"
-   */
+  useFocusEffect(
+    useCallback(() => {
+      setRefreshKey(prev => prev + 1);
+    }, [])
+  );
+
+  useEffect(() => {
+    const channel = suscribirseAReportes();
+    return () => {
+      channel.then(ch => ch.unsubscribe());
+    };
+  }, []);
+
   const navigateToLostPets = () => {
     router.push("/(tabs)/reportes-perdidas");
   };
 
-  /**
-   * Navega a la pantalla de reportar mascota encontrada
-   * Esta función es llamada cuando el usuario presiona el botón de "Reportar Encontrada"
-   */
   const navigateToFoundPets = () => {
     router.push("/(tabs)/reporte-encontradas");
   };
 
   return (
-    // Contenedor principal de la pantalla
     <ThemedView style={styles.container}>
-      {/* Encabezado con el título de la aplicación */}
       <ThemedView style={styles.header}>
         <ThemedText type="title" style={styles.title}>
           RadarPet
@@ -54,20 +50,16 @@ export default function MapScreen() {
         </TouchableOpacity>
       </ThemedView>
 
-      {/* Sección del mapa interactivo */}
       <View style={styles.mapContainer}>
-        <MapaListado />
+        <MapaListado key={refreshKey} />
       </View>
 
-      {/* Sección de acciones rápidas */}
       <ThemedView style={styles.quickActions}>
         <ThemedText type="subtitle" style={styles.quickActionsTitle}>
           Acciones Rápidas
         </ThemedText>
 
-        {/* Contenedor de botones de acción */}
         <View style={styles.actionButtons}>
-          {/* Botón para reportar mascota perdida */}
           <TouchableOpacity
             style={[
               styles.actionButton,
@@ -87,7 +79,6 @@ export default function MapScreen() {
             </ThemedText>
           </TouchableOpacity>
 
-          {/* Botón para reportar mascota encontrada */}
           <TouchableOpacity
             style={[
               styles.actionButton,
@@ -118,16 +109,13 @@ export default function MapScreen() {
   );
 }
 
-// Estilos de la pantalla
 const styles = StyleSheet.create({
-  // Contenedor principal
   container: {
     flex: 1,
     paddingTop: 60,
     backgroundColor: "#F8FAFB",
   },
 
-  // Estilos del encabezado
   header: {
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -135,20 +123,17 @@ const styles = StyleSheet.create({
     position: "relative",
   },
 
-  // Estilos del título principal
   title: {
     fontSize: 28,
     fontWeight: "bold",
     marginBottom: 4,
   },
 
-  // Estilos del subtítulo
   subtitle: {
     fontSize: 16,
     color: "#6B7280",
   },
 
-  // Contenedor del mapa
   mapContainer: {
     flex: 1,
     margin: 16,
@@ -168,27 +153,23 @@ const styles = StyleSheet.create({
     }),
   },
 
-  // Sección de acciones rápidas
   quickActions: {
     padding: 16,
     paddingTop: 8,
   },
 
-  // Título de la sección de acciones
   quickActionsTitle: {
     marginBottom: 12,
     color: "#1E293B",
     fontFamily: "Poppins-SemiBold",
   },
 
-  // Contenedor de botones
   actionButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 12,
   },
 
-  // Estilo base para los botones
   actionButton: {
     flex: 1,
     alignItems: "center",
@@ -209,17 +190,14 @@ const styles = StyleSheet.create({
     }),
   },
 
-  // Estilo específico para el botón de "Reportar Perdida"
   lostButton: {
     marginRight: 6,
   },
 
-  // Estilo específico para el botón de "Reportar Encontrada"
   foundButton: {
     marginLeft: 6,
   },
 
-  // Estilo base para el texto de los botones
   actionText: {
     marginLeft: 8,
     fontSize: 14,
@@ -227,7 +205,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
 
-  // Estilos específicos para el texto de cada botón
   lostButtonText: {
     color: "#FFFFFF",
   },

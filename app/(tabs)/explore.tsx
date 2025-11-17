@@ -365,11 +365,11 @@ const ReportesMascotasPerdidas = () => {
   // ========== FUNCIÓN: Renderizar una tarjeta de reporte ==========
   const renderReporte = (reporte: Reporte) => {
     const imagenUrl = obtenerImagenMascota(reporte);
+    const esMiReporte = usuarioActual === reporte.reportero.id;
     
     return (
       <View key={reporte.id} style={styles.reporteCard}>
         <View style={styles.reporteHeader}>
-          {/* COLUMNA 1: Imagen de la mascota */}
           <View style={styles.mascotaImagenContainer}>
             {imagenUrl ? (
               <Image
@@ -378,21 +378,17 @@ const ReportesMascotasPerdidas = () => {
                 onError={() => console.log('Error cargando imagen')}
               />
             ) : (
-              // Placeholder cuando no hay imagen
               <View style={[styles.mascotaImagen, styles.placeholderImagen]}>
                 <Ionicons name="paw" size={24} color={Colors.textTertiary} />
               </View>
             )}
           </View>
           
-          {/* COLUMNA 2: Información del reporte */}
           <View style={styles.reporteInfo}>
-            {/* Título del reporte */}
             <Text style={styles.reporteTitulo}>
               {reporte.titulo}
             </Text>
             
-            {/* Datos de la mascota */}
             {reporte.mascota && (
               <Text style={styles.mascotaInfo}>
                 {reporte.mascota.nombre} • {reporte.mascota.especie.nombre}
@@ -400,19 +396,16 @@ const ReportesMascotasPerdidas = () => {
               </Text>
             )}
             
-            {/* Descripción (máximo 2 líneas) */}
             <Text style={styles.reporteDescripcion} numberOfLines={2}>
               {reporte.descripcion}
             </Text>
             
-            {/* Ubicación de referencia */}
             {reporte.direccion_referencia && (
               <Text style={styles.ubicacion} numberOfLines={1}>
                 {reporte.direccion_referencia}
               </Text>
             )}
             
-            {/* Recompensa (si existe y es mayor a 0) */}
             {reporte.recompensa && reporte.recompensa > 0 && (
               <Text style={styles.recompensa}>
                 Recompensa: ${reporte.recompensa.toLocaleString('es-AR')}
@@ -420,30 +413,28 @@ const ReportesMascotasPerdidas = () => {
             )}
           </View>
           
-          {/* COLUMNA 3: Acciones */}
           <View style={styles.reporteAcciones}>
-            {/* Fecha formateada */}
             <Text style={styles.fechaReporte}>
               {formatearFecha(reporte.creado_en)}
             </Text>
             
-            {/* Botón de contactar */}
-            <TouchableOpacity
-              style={styles.contactarBtn}
-              onPress={() => handleContactar(reporte)}
-            >
-              <Ionicons name="call" size={16} color="#fff" />
-              <Text style={styles.contactarBtnText}>Contactar</Text>
-            </TouchableOpacity>
-
-            {/* Botón de marcar resuelto */}
-            <TouchableOpacity
-              style={styles.resueltoBtn}
-              onPress={() => handleMarcarResuelto(reporte.id, reporte.reportero.id)}
-            >
-              <Ionicons name="checkmark-circle" size={16} color="#fff" />
-              <Text style={styles.resueltoBtnText}>Resuelto</Text>
-            </TouchableOpacity>
+            {esMiReporte ? (
+              <TouchableOpacity
+                style={styles.resueltoBtn}
+                onPress={() => handleMarcarResuelto(reporte.id, reporte.reportero.id)}
+              >
+                <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                <Text style={styles.resueltoBtnText}>Resuelto</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.contactarBtn}
+                onPress={() => handleContactar(reporte)}
+              >
+                <Ionicons name="call" size={16} color="#fff" />
+                <Text style={styles.contactarBtnText}>Contactar</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>

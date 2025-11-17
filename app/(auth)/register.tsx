@@ -1,4 +1,4 @@
-import { EmailIcon, GoogleIcon, LockIcon, MapIcon, PhoneIcon, UserIcon } from '@/components/Icons';
+import { EmailIcon, EyeIcon, EyeOffIcon, GoogleIcon, LockIcon, MapIcon, PhoneIcon, UserIcon } from '@/components/Icons';
 import { registerWithGoogle, supabase } from '@/lib/supabase';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -15,6 +15,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [telefono, setTelefono] = useState('');
   const [ciudad, setCiudad] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({
     nombre: '',
@@ -133,20 +134,23 @@ export default function RegisterScreen() {
       };
     }
     
-    setLoading(true);
     try {
+      setLoading(true);
       const { error } = await registerWithGoogle();
       if (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-        Alert.alert('Error', errorMessage);
-      } else {
-        router.replace('/(tabs)');
+        setLoading(false);
+        if (error.message !== 'Cancelado') {
+          Alert.alert('Error', error.message);
+        }
+        return;
       }
+      setLoading(false);
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
     } catch (err) {
-      console.error('Error en registerGoogle:', err);
-      Alert.alert('Error', 'Error al registrarse con Google');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -230,13 +234,16 @@ export default function RegisterScreen() {
             <TextInput 
               style={styles.inputWithIcon} 
               placeholder="Contraseña (mín. 6 caracteres)" 
-              secureTextEntry 
+              secureTextEntry={!showPassword}
               value={password} 
               onChangeText={(text) => {
                 setPassword(text);
                 if (errors.password) setErrors({...errors, password: ''});
               }}
             />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              {showPassword ? <EyeOffIcon width={20} height={20} color="#666" /> : <EyeIcon width={20} height={20} color="#666" />}
+            </TouchableOpacity>
           </View>
           {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
           
@@ -248,7 +255,7 @@ export default function RegisterScreen() {
             
             <TouchableOpacity style={styles.oauthGoogle} onPress={registerGoogle} disabled={loading}>
               <GoogleIcon width={20} height={20} />
-              <Text style={styles.buttonText}>Registrarme con Google</Text>
+              <Text style={styles.buttonTextGoogle}>Registrarme con Google</Text>
             </TouchableOpacity>
             
             <Link href="/(auth)/login" asChild>
@@ -268,7 +275,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#02aaad',
   },
   scrollContent: {
     flexGrow: 1,
@@ -288,7 +295,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: screenHeight > 700 ? 32 : 28,
     fontWeight: 'bold',
-    color: '#16a34a',
+    color: '#fff',
     textAlign: 'center',
   },
   form: {
@@ -298,6 +305,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
@@ -323,7 +331,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   buttonPrimary: {
-    backgroundColor: '#16a34a',
+    backgroundColor: '#012531',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -333,7 +341,7 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
   oauthGoogle: {
-    backgroundColor: '#ea4335',
+    backgroundColor: '#f5f5f5',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -348,9 +356,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 8,
   },
+  buttonTextGoogle: {
+    color: '#012531',
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: 8,
+  },
   link: {
     marginTop: 16,
-    color: '#2563eb',
+    color: '#fff',
     textAlign: 'center',
     fontSize: 16,
     paddingVertical: 10,

@@ -17,9 +17,10 @@ export type ReportMarker = {
   fotoUrl?: string | null;
 };
 
-function parseWKBPoint(
-  wkb?: string | null
-): { lat: number; lng: number } | null {
+// ---------------------------
+// 🔥 Parser correcto: WKB HEX
+// ---------------------------
+function parseWKBPoint(wkb?: string | null): { lat: number; lng: number } | null {
   if (!wkb || wkb.length < 32) return null;
 
   try {
@@ -33,7 +34,7 @@ function parseWKBPoint(
       for (let i = 0; i < 8; i++) {
         view.setUint8(i, parseInt(hex.substr(i * 2, 2), 16));
       }
-      return view.getFloat64(0, true); // little-endian
+      return view.getFloat64(0, true);
     };
 
     const lng = hexToDouble(xHex);
@@ -41,7 +42,6 @@ function parseWKBPoint(
 
     if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
 
-    console.log("✅ Coordenadas parseadas:", { lat, lng });
     return { lat, lng };
   } catch (e) {
     console.error("❌ Error parseando WKB:", e);
@@ -49,97 +49,73 @@ function parseWKBPoint(
   }
 }
 
-// Componente para el pin personalizado
+// Icono personalizado
 function CustomPin({ tipo }: { tipo: "perdida" | "encontrada" }) {
-  const isPerdida = tipo === "perdida";
-  const source = isPerdida ? patita_roja : patita_verde;
-
-  return (
-    <View style={styles.pinContainer}>
-      <Image source={source} style={styles.pinImage} />
-    </View>
-  );
+  const source = tipo === "perdida" ? patita_roja : patita_verde;
+  return <Image source={source} style={{ width: 36, height: 36 }} />;
 }
 
-export default function MapaListado({
-  height = undefined,
-}: {
-  height?: number;
-}) {
+export default function MapaListado({ height }: { height?: number }) {
   const router = useRouter();
+  const mapRef = useRef<MapView | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [markers, setMarkers] = useState<ReportMarker[]>([]);
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
-  const mapRef = useRef<MapView | null>(null);
 
+  // Ubicación del usuario
   useEffect(() => {
-    const getUserLocation = async () => {
+    const loadUserLocation = async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
-        const location = await Location.getCurrentPositionAsync({});
+        const loc = await Location.getCurrentPositionAsync({});
         setUserLocation({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
         });
-        console.log("📍 Ubicación usuario:", location.coords);
       }
     };
-    getUserLocation();
+    loadUserLocation();
   }, []);
 
+  // Cargar marcadores
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        console.log("🔄 Iniciando carga de marcadores...");
 
-        // Obtener IDs de tipos
         const [tipoPerdidaRes, tipoEncontradaRes] = await Promise.all([
-          supabase
-            .from("tipos_reportes")
-            .select("id")
-            .eq("nombre", "perdida")
-            .maybeSingle(),
-          supabase
-            .from("tipos_reportes")
-            .select("id")
-            .eq("nombre", "encontrada")
-            .maybeSingle(),
+          supabase.from("tipos_reportes").select("id").eq("nombre", "perdida").maybeSingle(),
+          supabase.from("tipos_reportes").select("id").eq("nombre", "encontrada").maybeSingle(),
         ]);
 
-        const perdidaId = (tipoPerdidaRes.data as any)?.id;
-        const encontradaId = (tipoEncontradaRes.data as any)?.id;
+        const perdidaId = tipoPerdidaRes.data?.id;
+        const encontradaId = tipoEncontradaRes.data?.id;
 
-        console.log("🔑 IDs tipos:", { perdidaId, encontradaId });
+        const tiposIds = [perdidaId, encontradaId].filter(Boolean);
 
         const { data: reportes, error } = await supabase
           .from("reportes")
           .select("id,tipo_id,ubicacion,titulo")
           .eq("estado", "AC")
-          .in("tipo_id", [perdidaId, encontradaId].filter(Boolean) as number[])
+          .in("tipo_id", tiposIds)
           .limit(500);
 
-        if (error) {
-          console.error("❌ Error en reportes:", error);
-          throw error;
-        }
+        if (error) throw error;
 
-        console.log("📋 Reportes encontrados:", reportes?.length);
-        console.log("📋 Primer reporte:", reportes?.[0]);
-
+        // Fotos
         const { data: fotos } = await supabase
           .from("fotos_reportes")
           .select("reporte_id,ruta_storage")
           .eq("estado", "AC");
 
-        console.log("📸 Fotos encontradas:", fotos?.length);
-
         const fotoMap = new Map<string, string>();
         const BUCKET = "reportes-fotos";
-        (fotos as any[])?.forEach((f) => {
+
+        fotos?.forEach((f) => {
           if (!fotoMap.has(String(f.reporte_id))) {
             const { data: pub } = supabase.storage
               .from(BUCKET)
@@ -149,66 +125,42 @@ export default function MapaListado({
         });
 
         const items: ReportMarker[] = [];
-        (reportes as any[])?.forEach((r) => {
-          console.log(
-            "🔍 Procesando reporte:",
-            r.id,
-            "ubicacion:",
-            r.ubicacion
-          );
-          const p = parseWKBPoint(r.ubicacion);
-          if (!p) {
-            console.warn("⚠️ No se pudo parsear ubicación:", r.ubicacion);
-            return;
-          }
-          console.log("✅ Punto parseado:", p);
 
-          const tipo: "perdida" | "encontrada" =
-            r.tipo_id === perdidaId ? "perdida" : "encontrada";
+        reportes?.forEach((r) => {
+          const point = parseWKBPoint(r.ubicacion);
+          if (!point) return;
+
+          const tipo = r.tipo_id === perdidaId ? "perdida" : "encontrada";
+
           items.push({
             id: String(r.id),
-            lat: p.lat,
-            lng: p.lng,
+            lat: point.lat,
+            lng: point.lng,
             tipo,
             titulo: r.titulo,
-            fotoUrl: fotoMap.get(String(r.id)) || null,
+            fotoUrl: fotoMap.get(String(r.id)) ?? null,
           });
         });
 
-        console.log("🎯 Total marcadores creados:", items.length);
-        console.log("🎯 Primer marcador:", items[0]);
-
         setMarkers(items);
-
-        // Ajustar a los marcadores
-        setTimeout(() => {
-          if (mapRef.current && items.length) {
-            console.log("🗺️ Ajustando mapa a marcadores");
-            mapRef.current.fitToCoordinates(
-              items.map((i) => ({ latitude: i.lat, longitude: i.lng })),
-              {
-                edgePadding: { top: 80, left: 40, right: 40, bottom: 120 },
-                animated: true,
-              }
-            );
-          } else if (mapRef.current && userLocation) {
-            console.log("🗺️ Centrando en usuario");
-            mapRef.current.animateToRegion({
-              latitude: userLocation.latitude,
-              longitude: userLocation.longitude,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            });
-          }
-        }, 500);
       } catch (e) {
-        console.error("❌ [MapaListado] Error cargando marcadores:", e);
+        console.error("❌ Error cargando marcadores:", e);
       } finally {
         setLoading(false);
       }
     };
+
     load();
-  }, [userLocation]);
+
+    const channel = supabase
+      .channel("reportes-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "reportes" }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => channel.unsubscribe();
+  }, []);
 
   const initialRegion = useMemo(() => {
     if (userLocation) {
@@ -222,12 +174,10 @@ export default function MapaListado({
     return {
       latitude: -31.4201,
       longitude: -64.1888,
-      latitudeDelta: 0.2,
-      longitudeDelta: 0.2,
+      latitudeDelta: 0.1,
+      longitudeDelta: 0.1,
     };
   }, [userLocation]);
-
-  console.log("🎨 Renderizando mapa con", markers.length, "marcadores");
 
   return (
     <View style={[styles.container, height ? { height } : { flex: 1 }]}>
@@ -235,38 +185,28 @@ export default function MapaListado({
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
-        showsUserLocation={true}
-        showsMyLocationButton={true}
+        showsUserLocation
+        showsMyLocationButton
       >
-        {markers.map((m) => {
-          console.log("📌 Renderizando marcador:", m.id, "en", m.lat, m.lng);
-          return (
-            <Marker
-              key={m.id}
-              coordinate={{ latitude: m.lat, longitude: m.lng }}
-              title={
-                m.titulo ??
-                (m.tipo === "perdida"
-                  ? "Mascota perdida"
-                  : "Mascota encontrada")
-              }
-              anchor={{ x: 0.5, y: 1 }}
-              onCalloutPress={() => {
-                router.push("/explore");
-              }}
-            >
-              <CustomPin tipo={m.tipo} />
-            </Marker>
-          );
-        })}
+        {markers.map((m) => (
+          <Marker
+            key={m.id}
+            coordinate={{ latitude: m.lat, longitude: m.lng }}
+            title={m.titulo ?? (m.tipo === "perdida" ? "Mascota perdida" : "Mascota encontrada")}
+            anchor={{ x: 0.5, y: 1 }}
+            onCalloutPress={() => router.push("/explore")}
+          >
+            <CustomPin tipo={m.tipo} />
+          </Marker>
+        ))}
       </MapView>
+
       {loading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#4ECDC4" />
+          <ActivityIndicator size="large" />
         </View>
       )}
 
-      {/* Indicador de cantidad de marcadores */}
       <View style={styles.markerCount}>
         <Text style={styles.markerCountText}>{markers.length} reportes</Text>
       </View>
@@ -297,45 +237,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#333",
   },
-  pinContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pinCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#fff",
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  pinImage: {
-    width: 32,
-    height: 32,
-    resizeMode: "contain",
-  },
-  pinIcon: {
-    fontSize: 24,
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  pinTip: {
-    width: 0,
-    height: 0,
-    backgroundColor: "transparent",
-    borderStyle: "solid",
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderTopWidth: 12,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    marginTop: -2,
-  },
 });
+

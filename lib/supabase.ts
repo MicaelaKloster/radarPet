@@ -3,25 +3,18 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 
-// Completar la sesión de WebBrowser cuando sea necesario
 WebBrowser.maybeCompleteAuthSession();
 
-// Configuración de Supabase
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const DEV_IP = process.env.EXPO_PUBLIC_DEV_IP;
 
-// Validar variables de entorno
 if (!SUPABASE_URL) {
-  throw new Error(
-    "EXPO_PUBLIC_SUPABASE_URL no está definido en las variables de entorno"
-  );
+  throw new Error("EXPO_PUBLIC_SUPABASE_URL no está definido en las variables de entorno");
 }
 
 if (!SUPABASE_ANON_KEY) {
-  throw new Error(
-    "EXPO_PUBLIC_SUPABASE_ANON_KEY no está definido en las variables de entorno"
-  );
+  throw new Error("EXPO_PUBLIC_SUPABASE_ANON_KEY no está definido en las variables de entorno");
 }
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -29,13 +22,31 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: Platform.OS === "web",
+    storage:
+      Platform.OS === "web"
+        ? undefined
+        : {
+            getItem: async (key: string) => {
+              const AsyncStorage =
+                require("@react-native-async-storage/async-storage").default;
+              return await AsyncStorage.getItem(key);
+            },
+            setItem: async (key: string, value: string) => {
+              const AsyncStorage =
+                require("@react-native-async-storage/async-storage").default;
+              await AsyncStorage.setItem(key, value);
+            },
+            removeItem: async (key: string) => {
+              const AsyncStorage =
+                require("@react-native-async-storage/async-storage").default;
+              await AsyncStorage.removeItem(key);
+            },
+          },
   },
 });
 
-// Configurar el manejo de enlaces profundos para móviles
 if (Platform.OS !== "web") {
   const handleDeepLink = (url: string) => {
-    // Extraer los parámetros de la URL
     if (url.includes("#access_token=")) {
       const params = new URLSearchParams(url.split("#")[1]);
       const accessToken = params.get("access_token");
@@ -50,7 +61,6 @@ if (Platform.OS !== "web") {
     }
   };
 
-  // Configurar el listener de enlaces profundos
   const setupDeepLinkListener = () => {
     const subscription = Linking.addEventListener("url", (event) => {
       handleDeepLink(event.url);
@@ -59,18 +69,14 @@ if (Platform.OS !== "web") {
     return subscription;
   };
 
-  // Manejar URL inicial si la app se abrió desde un enlace profundo
   Linking.getInitialURL().then((url) => {
     if (url) {
       handleDeepLink(url);
     }
   });
 
-  // Configurar el listener
   setupDeepLinkListener();
 }
-
-// Funciones de autenticación
 
 const getRedirectTo = () => {
   if (Platform.OS === "web") {
@@ -79,7 +85,6 @@ const getRedirectTo = () => {
       : "";
   }
 
-  // Para móviles - usar IP local para desarrollo más estable
   if (__DEV__) {
     const ip = DEV_IP;
     const redirectUri = `exp://${ip}:8081/--/auth/callback`;
@@ -87,14 +92,12 @@ const getRedirectTo = () => {
     return redirectUri;
   }
 
-  // Para producción (app compilada)
   return "radarpet://auth/callback";
 };
 
 export const loginWithGoogle = async () => {
   try {
     if (Platform.OS === "web") {
-      // Para web, usar el método estándar
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -113,7 +116,6 @@ export const loginWithGoogle = async () => {
 
       return { data, error: null };
     } else {
-      // Para móviles, usar WebBrowser para abrir la URL de autenticación
       const redirectTo = getRedirectTo();
 
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -133,17 +135,14 @@ export const loginWithGoogle = async () => {
       }
 
       if (data.url) {
-        // Abrir el navegador con la URL de autenticación
         const result = await WebBrowser.openAuthSessionAsync(
           data.url,
           redirectTo
         );
 
         if (result.type === "success" && result.url) {
-          // Manejar la URL de retorno
           const returnUrl = result.url;
 
-          // Extraer tokens de la URL de retorno
           if (
             returnUrl.includes("#access_token=") ||
             returnUrl.includes("?access_token=")
@@ -191,10 +190,10 @@ export const loginWithGoogle = async () => {
   }
 };
 
-// Alias para registro con Google (misma funcionalidad)
 export const registerWithGoogle = loginWithGoogle;
 
 export const logout = async () => {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 };
+

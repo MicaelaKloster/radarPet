@@ -25,32 +25,15 @@ export default function TabLayout() {
   const [checking, setChecking] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
 
-  // Efecto para manejar la autenticación
   useEffect(() => {
-    // Verifica la sesión actual al cargar el componente
     supabase.auth.getSession().then(({ data }) => {
       setLoggedIn(!!data.session?.user);
       setChecking(false);
     });
-
-    // Suscripción a cambios en el estado de autenticación
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setLoggedIn(!!session?.user);
-    });
-
-    // Limpieza de la suscripción al desmontar el componente
-    return () => {
-      sub.subscription.unsubscribe();
-    };
   }, []);
 
-  // Mientras se verifica la autenticación, no mostrar nada
   if (checking) return null;
-
-  // Si el usuario no está autenticado, redirigir a la pantalla de login
   if (!loggedIn) return <Redirect href="/(auth)/login" />;
-
-  // Renderizado del layout de pestañas
   return (
     <Tabs
       // Configuración global de las pestañas

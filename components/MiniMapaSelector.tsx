@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 
 export type Coord = { lat: number; lng: number };
 
@@ -22,7 +22,6 @@ export default function MiniMapaSelector({
 
   const mapRef = useRef<MapView | null>(null);
 
-  // Hacer zoom/centrar cuando cambia value (incluye "mi ubicación")
   useEffect(() => {
     if (value && mapRef.current) {
       mapRef.current.animateToRegion(
@@ -52,14 +51,9 @@ export default function MiniMapaSelector({
           const { latitude, longitude } = e.nativeEvent.coordinate;
           onChange({ lat: latitude, lng: longitude });
         }}
+        showsUserLocation={true}
+        showsMyLocationButton={true}
       >
-        {/* Capa de teselas de OpenStreetMap (sin API keys) */}
-        <UrlTile
-          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maximumZ={19}
-          flipY={false}
-          zIndex={0}
-        />
         {value && (
           <Marker
             coordinate={{ latitude: value.lat, longitude: value.lng }}
