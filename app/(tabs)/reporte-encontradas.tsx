@@ -1095,19 +1095,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   buttonContainer: { paddingVertical: 20, paddingBottom: 40 },
-<<<<<<< HEAD
+
   submitButton: { backgroundColor: '#4ECDC4', borderRadius: 12, padding: 18, alignItems: 'center' },
   submitButtonDisabled: { backgroundColor: '#CCC', opacity: 0.6 },
-  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-=======
-  submitButton: {
-    backgroundColor: "#4ECDC4",
-    borderRadius: 12,
-    padding: 18,
-    alignItems: "center",
-  },
-  submitButtonDisabled: { backgroundColor: "#CCC", opacity: 0.6 },
   submitButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
-  // estilos de mapa removidos
->>>>>>> main
+
 });
