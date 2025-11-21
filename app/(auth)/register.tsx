@@ -3,6 +3,9 @@ import { registerWithGoogle, supabase } from '@/lib/supabase';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode as base64ToArrayBuffer } from 'base64-arraybuffer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -17,6 +20,8 @@ export default function RegisterScreen() {
   const [ciudad, setCiudad] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [uploadedAvatarUrl, setUploadedAvatarUrl] = useState<string | null>(null);
   const [errors, setErrors] = useState({
     nombre: '',
     email: '',
@@ -109,7 +114,8 @@ export default function RegisterScreen() {
         id: user.id, 
         nombre: nombre.trim(), 
         telefono, 
-        ciudad: ciudad.trim() 
+        ciudad: ciudad.trim(),
+        avatar_url: uploadedAvatarUrl 
       });
       if (perfErr) console.log('[register] perfil error', perfErr);
     }
@@ -122,6 +128,61 @@ export default function RegisterScreen() {
       Alert.alert('Registro', 'Revisa tu email para confirmar tu cuenta.');
       router.replace('/(auth)/login');
     }
+  };
+
+  const elegirImagen = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Se necesita permiso para acceder a la galería.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images' as any,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled) return;
+
+    const file = result.assets[0];
+    setAvatarUri(file.uri);
+
+    setLoading(true);
+    try {
+      const extension = file.uri.split('.').pop();
+      const fileName = `${Date.now()}.${extension}`;
+      const filePath = `fotos-perfil/${fileName}`;
+
+      let uploadData: any;
+      if (Platform.OS === 'web') {
+        const resp = await fetch(file.uri);
+        uploadData = await resp.blob();
+      } else {
+        const base64 = await FileSystem.readAsStringAsync(file.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        uploadData = base64ToArrayBuffer(base64);
+      }
+
+      const { error } = await supabase.storage
+        .from('fotos-perfil')
+        .upload(filePath, uploadData, {
+          contentType: file.mimeType || 'image/jpeg',
+        });
+
+      if (error) {
+        Alert.alert('Error', 'No se pudo subir la imagen: ' + error.message);
+        setLoading(false);
+        return;
+      }
+
+      const { data } = supabase.storage.from('fotos-perfil').getPublicUrl(filePath);
+      setUploadedAvatarUrl(data.publicUrl);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudo subir la imagen');
+    }
+    setLoading(false);
   };
 
   const registerGoogle = async () => {
@@ -174,6 +235,17 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.form}>
+          <TouchableOpacity onPress={elegirImagen} style={styles.avatarContainer}>
+            <View style={styles.avatarWrapper}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatar} resizeMode="cover" />
+              ) : (
+                <Text style={styles.avatarPlaceholder}>+</Text>
+              )}
+            </View>
+            <Text style={styles.avatarText}>Seleccionar foto de perfil</Text>
+          </TouchableOpacity>
+
           <View style={styles.inputContainer}>
             <UserIcon width={20} height={20} color="#666" />
             <TextInput 
@@ -305,6 +377,35 @@ const styles = StyleSheet.create({
   form: {
     flex: 1,
     paddingTop: 10,
+  },
+  avatarContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  avatarWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#012531',
+    overflow: 'hidden',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarPlaceholder: {
+    fontSize: 40,
+    color: '#012531',
+    fontWeight: 'bold',
+  },
+  avatarText: {
+    color: '#fff',
+    marginTop: 8,
+    fontSize: 14,
   },
   inputContainer: {
     flexDirection: 'row',
