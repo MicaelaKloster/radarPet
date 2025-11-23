@@ -8,7 +8,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Text,
 } from "react-native";
+import { useTheme } from '@/contexts/ThemeContext';
 // Componentes personalizados de la aplicación
 import MiniMapaSelector, { Coord } from "@/components/MiniMapaSelector";
 import { ThemedText } from "@/components/ThemedText"; // Texto que se adapta al tema claro/oscuro
@@ -118,6 +120,7 @@ function parseCoordenadas(texto: string): LatLng | null {
 }
 
 export default function ReportFoundScreen() {
+  const { isDark } = useTheme();
   const [loading, setLoading] = useState({
     catalogos: true, // Mientras cargamos especies/tamaños/sexos
     publicando: false, // Al enviar el reporte
@@ -663,14 +666,14 @@ export default function ReportFoundScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formSection}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
             Descripción
-          </ThemedText>
+          </Text>
 
           <View style={styles.formField}>
-            <ThemedText style={styles.fieldLabel}>
+            <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
               Nombre (si lo sabes)
-            </ThemedText>
+            </Text>
             <TextInput
               style={styles.textInput}
               placeholder="Ej: En placa decía Luna"
@@ -708,7 +711,7 @@ export default function ReportFoundScreen() {
           />
 
           <View style={styles.formField}>
-            <ThemedText style={styles.fieldLabel}>Color principal</ThemedText>
+            <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>Color principal</Text>
             <TextInput
               style={styles.textInput}
               placeholder="Ej: Marrón con blanco"
@@ -720,9 +723,9 @@ export default function ReportFoundScreen() {
           </View>
 
           <View style={styles.formField}>
-            <ThemedText style={styles.fieldLabel}>
+            <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
               Señas particulares
-            </ThemedText>
+            </Text>
             <TextInput
               style={[styles.textInput, styles.textArea]}
               multiline
@@ -739,14 +742,14 @@ export default function ReportFoundScreen() {
         </View>
 
         <View style={styles.formSection}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
             Ubicación y Fecha
-          </ThemedText>
+          </Text>
 
           <View style={styles.formField}>
-            <ThemedText style={styles.fieldLabel}>
+            <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
               Seleccioná la ubicación en el mapa
-            </ThemedText>
+            </Text>
             <MiniMapaSelector
   value={coordsForMap}
   onChange={(c) =>
@@ -767,9 +770,9 @@ export default function ReportFoundScreen() {
   }
 />
 
-            <ThemedText style={styles.uploadingText}>
+            <Text style={[styles.uploadingText, { color: isDark ? '#fff' : '#666' }]}>
               Tocá el mapa para establecer latitud y longitud.
-            </ThemedText>
+            </Text>
             <TouchableOpacity
               style={styles.ubicacionButton}
               onPress={solicitarMiUbicacion}
@@ -784,9 +787,9 @@ export default function ReportFoundScreen() {
           </View>
 
           <View style={styles.formField}>
-            <ThemedText style={styles.fieldLabel}>
+            <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
               Descripción de la ubicación (opcional)
-            </ThemedText>
+            </Text>
             <TextInput
               style={[styles.textInput, styles.textArea]}
               multiline
@@ -802,9 +805,9 @@ export default function ReportFoundScreen() {
           </View>
 
           <View style={styles.formField}>
-            <ThemedText style={styles.fieldLabel}>
+            <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
               Fecha/hora del hallazgo (opcional)
-            </ThemedText>
+            </Text>
             <TextInput
               style={styles.textInput}
               placeholder="Ej: 2025-08-08 15:00 o 08/08/2025"
@@ -818,9 +821,9 @@ export default function ReportFoundScreen() {
         </View>
 
         <View style={styles.formSection}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
             Fotografía
-          </ThemedText>
+          </Text>
           {foto ? (
             <View style={styles.photoPreview}>
               <Image
@@ -926,12 +929,13 @@ function Selector({
   placeholder?: string;
   obligatorio?: boolean;
 }) {
+  const { isDark } = useTheme();
   if (opciones.length === 0) {
     return (
       <View style={styles.formField}>
-        <ThemedText style={styles.fieldLabel}>
+        <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
           {titulo} {obligatorio && "*"}
-        </ThemedText>
+        </Text>
         <View style={styles.selectorEmpty}>
           <ThemedText style={styles.selectorEmptyText}>
             {placeholder}
@@ -942,9 +946,9 @@ function Selector({
   }
   return (
     <View style={styles.formField}>
-      <ThemedText style={styles.fieldLabel}>
+      <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
         {titulo} {obligatorio && "*"}
-      </ThemedText>
+      </Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

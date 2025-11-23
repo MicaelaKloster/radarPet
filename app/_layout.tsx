@@ -4,8 +4,25 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { ThemeProvider as CustomThemeProvider, useTheme } from '@/contexts/ThemeContext';
 
 SplashScreen.preventAutoHideAsync();
+
+function RootContent() {
+  const { isDark } = useTheme();
+  return (
+    <ThemeProvider value={DefaultTheme}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="auth/callback" />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+      <StatusBar style={isDark ? "light" : "dark"} />
+    </ThemeProvider>
+  );
+}
 
 export default function RootLayout() {
   const fontsLoaded = useAppFonts();
@@ -19,15 +36,8 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
   
   return (
-    <ThemeProvider value={DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="auth/callback" />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="dark" />
-    </ThemeProvider>
+    <CustomThemeProvider>
+      <RootContent />
+    </CustomThemeProvider>
   );
 }

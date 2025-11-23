@@ -19,7 +19,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Text,
 } from "react-native";
+import { useTheme } from '@/contexts/ThemeContext';
 
 
 // Helper para timeout de promesas (evita quedarse colgado sin feedback)
@@ -122,7 +124,7 @@ type FormData = {
 };
 
 export default function ReportesPerdidasScreen() {
-  // 6. Estado unificado de carga
+  const { isDark } = useTheme();
   const [loading, setLoading] = useState({
     catalogos: true,
     ubicacion: false,
@@ -497,10 +499,10 @@ return (
 
     <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.formSection}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Descripción</ThemedText>
+        <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>Descripción</Text>
 
         <View style={styles.formField}>
-          <ThemedText style={styles.fieldLabel}>Nombre</ThemedText>
+          <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>Nombre</Text>
           <TextInput
             style={styles.textInput}
             placeholder="Ej: Luna"
@@ -538,7 +540,7 @@ return (
         />
 
         <View style={styles.formField}>
-          <ThemedText style={styles.fieldLabel}>Color principal</ThemedText>
+          <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>Color principal</Text>
           <TextInput
             style={styles.textInput}
             placeholder="Ej: Marrón con blanco"
@@ -551,7 +553,7 @@ return (
         </View>
 
         <View style={styles.formField}>
-          <ThemedText style={styles.fieldLabel}>Señas particulares</ThemedText>
+          <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>Señas particulares</Text>
           <TextInput
             style={[styles.textInput, styles.textArea]}
             multiline
@@ -567,24 +569,24 @@ return (
       </View>
 
       <View style={styles.formSection}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Ubicación y Fecha</ThemedText>
+        <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>Ubicación y Fecha</Text>
 
         <View style={styles.formField}>
-          <ThemedText style={styles.fieldLabel}>Seleccioná la ubicación en el mapa</ThemedText>
+          <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>Seleccioná la ubicación en el mapa</Text>
           <MiniMapaSelector
             value={coordsForMap}
             onChange={(c) => setFormData(p => ({ ...p, ultimaUbicacion: `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` }))}
             height={300}
             initialCenter={coordsForMap ?? (ubicacionActual ? { lat: ubicacionActual.latitude, lng: ubicacionActual.longitude } : undefined)}
           />
-          <ThemedText style={styles.uploadingText}>Tocá el mapa para establecer latitud y longitud.</ThemedText>
+          <Text style={[styles.uploadingText, { color: isDark ? '#fff' : '#666' }]}>Tocá el mapa para establecer latitud y longitud.</Text>
           <TouchableOpacity style={styles.ubicacionButton} onPress={solicitarMiUbicacion} disabled={loading.publicando || loading.obteniendoUbicacion}>
             <ThemedText style={styles.ubicacionButtonText}>{loading.obteniendoUbicacion ? 'Obteniendo ubicación...' : 'Usar mi ubicación actual'}</ThemedText>
           </TouchableOpacity>
         </View>
 
         <View style={styles.formField}>
-          <ThemedText style={styles.fieldLabel}>Descripción de la ubicación (opcional)</ThemedText>
+          <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>Descripción de la ubicación (opcional)</Text>
           <TextInput
             style={[styles.textInput, styles.textArea]}
             multiline
@@ -599,7 +601,7 @@ return (
         </View>
 
         <View style={styles.formField}>
-          <ThemedText style={styles.fieldLabel}>Fecha/hora de la pérdida (opcional)</ThemedText>
+          <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>Fecha/hora de la pérdida (opcional)</Text>
           <TextInput
             style={styles.textInput}
             placeholder="Ej: 2025-08-08 15:00 o 08/08/2025"
@@ -612,7 +614,7 @@ return (
       </View>
 
       <View style={styles.formSection}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Fotografía (obligatoria)</ThemedText>
+        <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>Fotografía (obligatoria)</Text>
         {foto ? (
           <View style={styles.photoPreview}>
             <Image source={{ uri: foto.uri }} style={styles.photoImage} contentFit="cover" transition={200} />
@@ -677,10 +679,11 @@ function Selector({
   placeholder?: string;
   obligatorio?: boolean;
 }) {
+  const { isDark } = useTheme();
   if (opciones.length === 0) {
     return (
       <View style={styles.formField}>
-        <ThemedText style={styles.fieldLabel}>{titulo} {obligatorio && '*'}</ThemedText>
+        <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>{titulo} {obligatorio && '*'}</Text>
         <View style={styles.selectorEmpty}>
           <ThemedText style={styles.selectorEmptyText}>{placeholder}</ThemedText>
         </View>
@@ -689,7 +692,7 @@ function Selector({
   }
   return (
     <View style={styles.formField}>
-      <ThemedText style={styles.fieldLabel}>{titulo} {obligatorio && '*'}</ThemedText>
+      <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>{titulo} {obligatorio && '*'}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorContainer}>
         {opciones.map(op => (
           <TouchableOpacity key={op.id} style={[styles.selectorOption, valorSeleccionado === op.id && styles.selectorOptionSelected]} onPress={() => onSeleccionar(op.id)}>
@@ -709,7 +712,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', color: '#4ECDC4', marginTop: 10, textAlign: 'center' },
   content: { flex: 1, paddingHorizontal: 20 },
   formSection: { marginBottom: 25 },
-  sectionTitle: { marginBottom: 15, color: '#333', fontWeight: '600' },
+  sectionTitle: { marginBottom: 15, fontWeight: '600', fontSize: 20 },
   formField: { marginBottom: 15 },
   fieldLabel: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
   textInput: { backgroundColor: '#F8F9FA', borderRadius: 8, padding: 15, borderWidth: 1, borderColor: '#E9ECEF', fontSize: 16, color: '#000' },
