@@ -90,4 +90,4 @@ coverage/
 expo-env.d.ts
 # @end expo-cli
 
-bash.exe.stackdump
+*.stackdump
