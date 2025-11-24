@@ -395,9 +395,9 @@ export default function ProfileScreen() {
         )}
 
         <View style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
             Historial de Actividad
-          </ThemedText>
+          </Text>
           {activity.loading ? (
             <View style={styles.emptyState}>
               <ActivityIndicator size="small" />
@@ -463,9 +463,9 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
+        <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
           Configuración
-        </ThemedText>
+        </Text>
 
         <View style={styles.menuItem}>
           <TouchableOpacity
