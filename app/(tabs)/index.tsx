@@ -1,16 +1,18 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, TouchableOpacity, View, Text } from "react-native";
 
 import MapaListado from "@/components/MapaListado";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { suscribirseAReportes } from '@/lib/subscriptions';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function MapScreen() {
   const router = useRouter();
   const [refreshKey, setRefreshKey] = useState(0);
+  const { isDark } = useTheme();
 
   useFocusEffect(
     useCallback(() => {
@@ -36,12 +38,12 @@ export default function MapScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
-        <ThemedText type="title" style={styles.title}>
+        <Text style={[styles.title, { color: isDark ? '#fff' : '#333' }]}>
           RadarPet
-        </ThemedText>
-        <ThemedText style={styles.subtitle}>
+        </Text>
+        <Text style={[styles.subtitle, { color: isDark ? '#fff' : '#6B7280' }]}>
           Encuentra a tu mascota perdida
-        </ThemedText>
+        </Text>
         <TouchableOpacity
           style={styles.fullMapButton}
           onPress={() => router.push("/mapa-completo")}
@@ -55,9 +57,9 @@ export default function MapScreen() {
       </View>
 
       <ThemedView style={styles.quickActions}>
-        <ThemedText type="subtitle" style={styles.quickActionsTitle}>
+        <Text style={[styles.quickActionsTitle, { color: isDark ? '#fff' : '#1E293B' }]}>
           Acciones Rápidas
-        </ThemedText>
+        </Text>
 
         <View style={styles.actionButtons}>
           <TouchableOpacity
@@ -113,7 +115,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
-    backgroundColor: "#F8FAFB",
   },
 
   header: {
@@ -131,7 +132,6 @@ const styles = StyleSheet.create({
 
   subtitle: {
     fontSize: 16,
-    color: "#6B7280",
   },
 
   mapContainer: {
@@ -160,7 +160,8 @@ const styles = StyleSheet.create({
 
   quickActionsTitle: {
     marginBottom: 12,
-    color: "#1E293B",
+    fontSize: 20,
+    fontWeight: "bold",
     fontFamily: "Poppins-SemiBold",
   },
 

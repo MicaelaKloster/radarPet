@@ -1,9 +1,9 @@
-// Importaciones de constantes de diseño (colores, espaciados, tipografía, etc.)
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/Theme';
-// Hook personalizado para cargar fuentes
+import { ThemedExploreView } from '@/components/ThemedExploreView';
+import { ThemedExploreText } from '@/components/ThemedExploreText';
 import { useAppFonts } from '@/hooks/useFonts';
-// Cliente de Supabase para conexión con la base de datos
 import { supabase } from '@/lib/supabase';
+import { useTheme } from '@/contexts/ThemeContext';
 // Librería de iconos de Expo
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
@@ -56,7 +56,7 @@ interface Reporte {
 // COMPONENTE PRINCIPAL
 // ============================================
 const ReportesMascotasPerdidas = () => {
-  // ========== ESTADOS ==========
+  const { isDark } = useTheme();
   const [reportes, setReportes] = useState<Reporte[]>([]);           // Lista de reportes
   const [loading, setLoading] = useState(true);                       // Estado de carga inicial
   const [refreshing, setRefreshing] = useState(false);                // Estado de refresh
@@ -443,10 +443,11 @@ const ReportesMascotasPerdidas = () => {
 
   // ========== RENDER PRINCIPAL ==========
   return (
+    <ThemedExploreView style={{ flex: 1 }}>
     <SafeAreaView style={styles.container}>
       {/* ===== HEADER: Logo y botón de perfil ===== */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>RadarPet</Text>
+        <Text style={[styles.headerTitle, { color: isDark ? '#fff' : Colors.text }]}>RadarPet</Text>
         <TouchableOpacity style={styles.profileButton}>
           <Ionicons name="person-circle" size={24} color={Colors.textSecondary} />
         </TouchableOpacity>
@@ -461,12 +462,12 @@ const ReportesMascotasPerdidas = () => {
           ]}
           onPress={() => setFiltroActivo('perdidas')}
         >
-          <Text style={[
+          <ThemedExploreText style={[
             styles.filtroBtnText,
             filtroActivo === 'perdidas' && styles.filtroBtnTextActivo
           ]}>
             Mascotas Perdidas
-          </Text>
+          </ThemedExploreText>
         </TouchableOpacity>
         
         <TouchableOpacity
@@ -476,19 +477,19 @@ const ReportesMascotasPerdidas = () => {
           ]}
           onPress={() => setFiltroActivo('encontradas')}
         >
-          <Text style={[
+          <ThemedExploreText style={[
             styles.filtroBtnText,
             filtroActivo === 'encontradas' && styles.filtroBtnTextActivo
           ]}>
             Mascotas Encontradas
-          </Text>
+          </ThemedExploreText>
         </TouchableOpacity>
       </View>
 
       {/* ===== TÍTULO DE SECCIÓN ===== */}
-      <Text style={styles.seccionTitulo}>
+      <ThemedExploreText style={styles.seccionTitulo}>
         Reportes de {filtroActivo === 'perdidas' ? 'Mascotas Perdidas' : 'Mascotas Encontradas'}
-      </Text>
+      </ThemedExploreText>
 
       {/* ===== BUSCADOR ===== */}
       <View style={styles.buscadorContainer}>
@@ -507,7 +508,7 @@ const ReportesMascotasPerdidas = () => {
         // Mostrar spinner mientras carga
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Cargando reportes...</Text>
+          <ThemedExploreText style={styles.loadingText}>Cargando reportes...</ThemedExploreText>
         </View>
       ) : (
         // Mostrar lista de reportes con pull-to-refresh
@@ -525,9 +526,9 @@ const ReportesMascotasPerdidas = () => {
             // Estado vacío: no hay reportes
             <View style={styles.emptyContainer}>
               <Ionicons name="sad-outline" size={64} color={Colors.gray400} />
-              <Text style={styles.emptyText}>
+              <ThemedExploreText style={styles.emptyText}>
                 {searchText ? 'No se encontraron reportes' : 'No hay reportes disponibles'}
-              </Text>
+              </ThemedExploreText>
             </View>
           ) : (
             // Renderizar cada reporte
@@ -536,6 +537,7 @@ const ReportesMascotasPerdidas = () => {
         </ScrollView>
       )}
     </SafeAreaView>
+    </ThemedExploreView>
   );
 };
 
@@ -545,7 +547,7 @@ const ReportesMascotasPerdidas = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.backgroundSecondary,
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
@@ -553,7 +555,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    backgroundColor: Colors.background,
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
   },
@@ -568,7 +570,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    backgroundColor: Colors.background,
+    backgroundColor: 'transparent',
     gap: Spacing.sm,
   },
   filtroBtn: {
@@ -600,7 +602,7 @@ const styles = StyleSheet.create({
   buscadorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: 'transparent',
     marginHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
     borderRadius: BorderRadius.button * 3,

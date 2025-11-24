@@ -2,7 +2,8 @@ import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { supabase } from '@/lib/supabase';
 import React, { useState } from 'react';
-import { Alert, Image, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, StyleSheet, TextInput, TouchableOpacity, View, Text } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type Mascota = {
   id: string;
@@ -20,7 +21,8 @@ type Props = {
 
 export default function MisMascotas({ mascotas, setMascotas, userId, recargarMascotas }: Props) {
   const [modalVisible, setModalVisible] = useState(false); 
-  const [nuevoNombre, setNuevoNombre] = useState(''); 
+  const [nuevoNombre, setNuevoNombre] = useState('');
+  const { isDark } = useTheme(); 
 
   const agregarMascota = async () => {
     if (!nuevoNombre.trim()) return;
@@ -49,9 +51,9 @@ export default function MisMascotas({ mascotas, setMascotas, userId, recargarMas
 
   return (
     <View style={styles.seccion}>
-      <ThemedText type="subtitle" style={styles.tituloSeccion}>
+      <Text style={[styles.tituloSeccion, { color: isDark ? '#fff' : '#333' }]}>
         Mis Mascotas Registradas
-      </ThemedText>
+      </Text>
 
       {mascotas.length === 0 ? (
         <View style={styles.estadoVacio}>
@@ -109,7 +111,7 @@ export default function MisMascotas({ mascotas, setMascotas, userId, recargarMas
 
 const styles = StyleSheet.create({
   seccion: { marginTop: 25 },
-  tituloSeccion: { marginBottom: 15, color: '#333' },
+  tituloSeccion: { marginBottom: 15, fontSize: 20, fontWeight: 'bold' },
   estadoVacio: { alignItems: 'center', padding: 40, backgroundColor: '#F8F9FA', borderRadius: 12 },
   textoVacio: { fontSize: 16, fontWeight: '600', marginTop: 15 },
   subtextoVacio: { fontSize: 14, opacity: 0.6, textAlign: 'center', marginTop: 8, marginBottom: 20 },

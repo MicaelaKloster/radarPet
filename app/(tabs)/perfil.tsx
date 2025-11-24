@@ -4,6 +4,8 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Text } from 'react-native';
 import {
   ActivityIndicator,
   Alert,
@@ -51,6 +53,7 @@ export default function ProfileScreen() {
   }>({ loading: true, items: [] });
 
   const router = useRouter();
+  const { isDark, toggleTheme } = useTheme();
 
   const recargarMascotas = async () => {
     if (!userId) return;
@@ -341,9 +344,9 @@ export default function ProfileScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
             Mis Reportes
-          </ThemedText>
+          </Text>
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <IconSymbol
@@ -467,6 +470,16 @@ export default function ProfileScreen() {
         <View style={styles.menuItem}>
           <TouchableOpacity
             style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
+            onPress={toggleTheme}
+          >
+            <IconSymbol size={20} name={isDark ? 'sun.max.fill' : 'moon.fill'} color="#666" />
+            <ThemedText style={styles.menuText}>{isDark ? 'Desactivar modo oscuro' : 'Activar modo oscuro'}</ThemedText>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.menuItem}>
+          <TouchableOpacity
+            style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
             onPress={() => router.push('/perfil/ubicacion')}
           >
             <IconSymbol size={20} name="location.fill" color="#666" />
@@ -527,7 +540,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 60 },
   content: { flex: 1, paddingHorizontal: 20 },
   section: { marginTop: 25 },
-  sectionTitle: { marginBottom: 15, color: '#333' },
+  sectionTitle: { marginBottom: 15, fontSize: 20, fontWeight: 'bold' },
 
   statsContainer: {
     flexDirection: 'row',

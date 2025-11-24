@@ -6,7 +6,8 @@ import { decode as base64ToArrayBuffer } from 'base64-arraybuffer';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, StyleSheet, TouchableOpacity, View, Text } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type Props = {
   nombre: string; 
@@ -17,7 +18,8 @@ type Props = {
 };
 
 export default function Encabezado ({ nombre, email, avatarUri, userId, onAvatarChange }: Props) {
-  const [subiendo, setSubiendo] = useState(false); 
+  const [subiendo, setSubiendo] = useState(false);
+  const { isDark } = useTheme(); 
 
   const elegirYSubirImagen = async () => {
     if (!userId) return; 
@@ -112,13 +114,13 @@ export default function Encabezado ({ nombre, email, avatarUri, userId, onAvatar
           )}
         </View>
       </TouchableOpacity>
-      <ThemedText type="title" style={styles.nombre}>
+      <Text style={[styles.nombre, { color: isDark ? '#fff' : '#000' }]}>
         {nombre || 'Usuario'}
-      </ThemedText>
-      {email && <ThemedText style={styles.email}>{email}</ThemedText>}
-      <ThemedText style={{ fontSize: 12, opacity: 0.5, marginTop: 4 }}>
+      </Text>
+      {email && <Text style={[styles.email, { color: isDark ? '#fff' : '#666' }]}>{email}</Text>}
+      <Text style={{ fontSize: 12, opacity: 0.5, marginTop: 4, color: isDark ? '#fff' : '#666' }}>
         Toca la imagen para cambiar tu foto de perfil
-      </ThemedText>
+      </Text>
     </ThemedView>
   );
 }
