@@ -1,23 +1,22 @@
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import { supabase } from '@/lib/supabase';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { useTheme } from '@/contexts/ThemeContext';
-import { Text } from 'react-native';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { useTheme } from "@/contexts/ThemeContext";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   ScrollView,
   StyleSheet,
+  Text,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
 
-import Encabezado from '../perfil/encabezado';
-import MisMascotas from '../perfil/mis-mascotas';
+import Encabezado from "../perfil/encabezado";
+import MisMascotas from "../perfil/mis-mascotas";
 
 type Mascota = {
   id: string;
@@ -29,7 +28,7 @@ type Mascota = {
 export default function ProfileScreen() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [nombre, setNombre] = useState<string>('');
+  const [nombre, setNombre] = useState<string>("");
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [mascotas, setMascotas] = useState<Mascota[]>([]);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -46,7 +45,7 @@ export default function ProfileScreen() {
     items: {
       id: string;
       at?: string | null;
-      type: 'reporte' | 'seguimiento' | 'mascota';
+      type: "reporte" | "seguimiento" | "mascota";
       title: string;
       subtitle?: string;
     }[];
@@ -55,27 +54,31 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { isDark, toggleTheme } = useTheme();
 
-  const recargarMascotas = async () => {
-    if (!userId) return;
+  // En ProfileScreen, modifica la función recargarMascotas:
+
+  const recargarMascotas = async (uid?: string) => {
+    const id = uid || userId; // ✅ Ahora usa userId del estado si no se pasa uid
+    if (!id) return;
+
     try {
       const { data, error } = await supabase
-        .from('mascotas')
-        .select('id, nombre, foto_principal_url, especie_id')
-        .eq('estado', 'AC')
-        .eq('duenio_id', userId);
+        .from("mascotas")
+        .select("id, nombre, foto_principal_url, especie_id")
+        .eq("estado", "AC")
+        .eq("duenio_id", id);
 
       if (error) throw error;
 
-      const mascotasFormateadas: Mascota[] = (data || []).map((m) => ({
-        id: m.id,
-        nombre: m.nombre,
-        fotoPrincipalUrl: m.foto_principal_url,
-        especieId: m.especie_id,
-      }));
-
-      setMascotas(mascotasFormateadas);
+      setMascotas(
+        (data || []).map((m) => ({
+          id: m.id,
+          nombre: m.nombre,
+          fotoPrincipalUrl: m.foto_principal_url,
+          especieId: m.especie_id,
+        }))
+      );
     } catch (error) {
-      console.error('Error recargando mascotas:', error);
+      console.error("Error recargando mascotas:", error);
     }
   };
 
@@ -87,22 +90,22 @@ export default function ProfileScreen() {
         const [tipoPerdidaRes, tipoEncontradaRes, estadosCierre] =
           await Promise.all([
             supabase
-              .from('tipos_reportes')
-              .select('id')
-              .eq('nombre', 'perdida')
-              .eq('estado', 'AC')
+              .from("tipos_reportes")
+              .select("id")
+              .eq("nombre", "perdida")
+              .eq("estado", "AC")
               .maybeSingle(),
             supabase
-              .from('tipos_reportes')
-              .select('id')
-              .eq('nombre', 'encontrada')
-              .eq('estado', 'AC')
+              .from("tipos_reportes")
+              .select("id")
+              .eq("nombre", "encontrada")
+              .eq("estado", "AC")
               .maybeSingle(),
             supabase
-              .from('estados_reportes')
-              .select('id,nombre')
-              .in('nombre', ['cerrado', 'resuelto', 'reunido'])
-              .eq('estado', 'AC'),
+              .from("estados_reportes")
+              .select("id,nombre")
+              .in("nombre", ["cerrado", "resuelto", "reunido"])
+              .eq("estado", "AC"),
           ]);
 
         const tipoPerdidaId = (tipoPerdidaRes.data as any)?.id || null;
@@ -114,27 +117,27 @@ export default function ProfileScreen() {
           await Promise.all([
             tipoPerdidaId
               ? supabase
-                  .from('reportes')
-                  .select('id', { count: 'exact', head: true })
-                  .eq('estado', 'AC')
-                  .eq('reportero_id', userId)
-                  .eq('tipo_id', tipoPerdidaId)
+                  .from("reportes")
+                  .select("id", { count: "exact", head: true })
+                  .eq("estado", "AC")
+                  .eq("reportero_id", userId)
+                  .eq("tipo_id", tipoPerdidaId)
               : Promise.resolve({ count: 0 } as any),
             tipoEncontradaId
               ? supabase
-                  .from('reportes')
-                  .select('id', { count: 'exact', head: true })
-                  .eq('estado', 'AC')
-                  .eq('reportero_id', userId)
-                  .eq('tipo_id', tipoEncontradaId)
+                  .from("reportes")
+                  .select("id", { count: "exact", head: true })
+                  .eq("estado", "AC")
+                  .eq("reportero_id", userId)
+                  .eq("tipo_id", tipoEncontradaId)
               : Promise.resolve({ count: 0 } as any),
             estadosCierreIds.length
               ? supabase
-                  .from('reportes')
-                  .select('id', { count: 'exact', head: true })
-                  .eq('estado', 'AC')
-                  .eq('reportero_id', userId)
-                  .in('estado_id', estadosCierreIds)
+                  .from("reportes")
+                  .select("id", { count: "exact", head: true })
+                  .eq("estado", "AC")
+                  .eq("reportero_id", userId)
+                  .in("estado_id", estadosCierreIds)
               : Promise.resolve({ count: 0 } as any),
           ]);
 
@@ -145,7 +148,7 @@ export default function ProfileScreen() {
           loading: false,
         });
       } catch (e) {
-        console.warn('[Perfil] Error cargando contadores:', e);
+        console.warn("[Perfil] Error cargando contadores:", e);
         setStats((prev) => ({ ...prev, loading: false }));
       }
     };
@@ -155,63 +158,63 @@ export default function ProfileScreen() {
         setActivity((prev) => ({ ...prev, loading: true }));
 
         const repTry1 = await supabase
-          .from('reportes')
-          .select('id,titulo,created_at')
-          .eq('estado', 'AC')
-          .eq('reportero_id', userId)
-          .order('created_at', { ascending: false })
+          .from("reportes")
+          .select("id,titulo,created_at")
+          .eq("estado", "AC")
+          .eq("reportero_id", userId)
+          .order("created_at", { ascending: false })
           .limit(20);
 
         const rep = repTry1.error
           ? await supabase
-              .from('reportes')
-              .select('id,titulo')
-              .eq('estado', 'AC')
-              .eq('reportero_id', userId)
-              .order('id', { ascending: false })
+              .from("reportes")
+              .select("id,titulo")
+              .eq("estado", "AC")
+              .eq("reportero_id", userId)
+              .order("id", { ascending: false })
               .limit(20)
           : repTry1;
 
         const segTry1 = await supabase
-          .from('seguimientos')
-          .select('id,reporte_id,created_at')
-          .eq('estado', 'AC')
-          .eq('usuario_id', userId)
-          .order('created_at', { ascending: false })
+          .from("seguimientos")
+          .select("id,reporte_id,created_at")
+          .eq("estado", "AC")
+          .eq("usuario_id", userId)
+          .order("created_at", { ascending: false })
           .limit(20);
 
         const seg = segTry1.error
           ? await supabase
-              .from('seguimientos')
-              .select('id,reporte_id')
-              .eq('estado', 'AC')
-              .eq('usuario_id', userId)
-              .order('id', { ascending: false })
+              .from("seguimientos")
+              .select("id,reporte_id")
+              .eq("estado", "AC")
+              .eq("usuario_id", userId)
+              .order("id", { ascending: false })
               .limit(20)
           : segTry1;
 
         const masTry1 = await supabase
-          .from('mascotas')
-          .select('id,nombre,created_at')
-          .eq('estado', 'AC')
-          .eq('duenio_id', userId)
-          .order('created_at', { ascending: false })
+          .from("mascotas")
+          .select("id,nombre,created_at")
+          .eq("estado", "AC")
+          .eq("duenio_id", userId)
+          .order("created_at", { ascending: false })
           .limit(20);
 
         const mas = masTry1.error
           ? await supabase
-              .from('mascotas')
-              .select('id,nombre')
-              .eq('estado', 'AC')
-              .eq('duenio_id', userId)
-              .order('id', { ascending: false })
+              .from("mascotas")
+              .select("id,nombre")
+              .eq("estado", "AC")
+              .eq("duenio_id", userId)
+              .order("id", { ascending: false })
               .limit(20)
           : masTry1;
 
         const items: {
           id: string;
           at?: string | null;
-          type: 'reporte' | 'seguimiento' | 'mascota';
+          type: "reporte" | "seguimiento" | "mascota";
           title: string;
           subtitle?: string;
         }[] = [];
@@ -220,8 +223,8 @@ export default function ProfileScreen() {
           items.push({
             id: `rep-${r.id}`,
             at: r.created_at ?? null,
-            type: 'reporte',
-            title: r.titulo || 'Reporte creado',
+            type: "reporte",
+            title: r.titulo || "Reporte creado",
             subtitle: `Reporte #${r.id}`,
           })
         );
@@ -230,8 +233,8 @@ export default function ProfileScreen() {
           items.push({
             id: `seg-${s.id}`,
             at: s.created_at ?? null,
-            type: 'seguimiento',
-            title: 'Comenzaste a seguir un reporte',
+            type: "seguimiento",
+            title: "Comenzaste a seguir un reporte",
             subtitle: `Reporte #${s.reporte_id}`,
           })
         );
@@ -240,8 +243,8 @@ export default function ProfileScreen() {
           items.push({
             id: `mas-${m.id}`,
             at: m.created_at ?? null,
-            type: 'mascota',
-            title: 'Registraste una mascota',
+            type: "mascota",
+            title: "Registraste una mascota",
             subtitle: m.nombre ? String(m.nombre) : undefined,
           })
         );
@@ -253,7 +256,7 @@ export default function ProfileScreen() {
 
         setActivity({ loading: false, items: items.slice(0, 20) });
       } catch (e) {
-        console.warn('[Perfil] Error cargando actividad:', e);
+        console.warn("[Perfil] Error cargando actividad:", e);
         setActivity({ loading: false, items: [] });
       }
     };
@@ -261,17 +264,17 @@ export default function ProfileScreen() {
     const loadUserData = async (user: any) => {
       try {
         const { data: perfil } = await supabase
-          .from('perfiles')
-          .select('nombre, avatar_url')
-          .eq('id', user.id)
+          .from("perfiles")
+          .select("nombre, avatar_url")
+          .eq("id", user.id)
           .maybeSingle();
 
         if (perfil) {
-          setNombre(perfil.nombre || '');
+          setNombre(perfil.nombre || "");
           setAvatarUri(perfil.avatar_url || null);
         }
       } catch (error) {
-        console.error('Error cargando datos del perfil:', error);
+        console.error("Error cargando datos del perfil:", error);
       }
     };
 
@@ -292,7 +295,7 @@ export default function ProfileScreen() {
         await Promise.all([
           loadCounts(user.id),
           loadActivity(user.id),
-          recargarMascotas(),
+          recargarMascotas(user.id), // ✅ ahora tiene el user.id
         ]);
       } else {
         setStats({ perdidas: 0, encontradas: 0, reuniones: 0, loading: false });
@@ -315,20 +318,20 @@ export default function ProfileScreen() {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      router.replace('/(auth)/login');
+      router.replace("/(auth)/login");
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert("Error", error.message);
       setLoggingOut(false);
     }
   };
 
   const formatDate = (iso?: string | null) => {
-    if (!iso) return '';
+    if (!iso) return "";
     try {
       const d = new Date(iso);
       return d.toLocaleString();
     } catch {
-      return iso || '';
+      return iso || "";
     }
   };
 
@@ -344,7 +347,9 @@ export default function ProfileScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
+          <Text
+            style={[styles.sectionTitle, { color: isDark ? "#fff" : "#333" }]}
+          >
             Mis Reportes
           </Text>
           <View style={styles.statsContainer}>
@@ -355,7 +360,7 @@ export default function ProfileScreen() {
                 color="#FF6B6B"
               />
               <ThemedText style={styles.statNumber}>
-                {stats.loading ? '...' : String(stats.perdidas)}
+                {stats.loading ? "..." : String(stats.perdidas)}
               </ThemedText>
               <ThemedText style={styles.statLabel}>Perdidas</ThemedText>
             </View>
@@ -366,14 +371,14 @@ export default function ProfileScreen() {
                 color="#4ECDC4"
               />
               <ThemedText style={styles.statNumber}>
-                {stats.loading ? '...' : String(stats.encontradas)}
+                {stats.loading ? "..." : String(stats.encontradas)}
               </ThemedText>
               <ThemedText style={styles.statLabel}>Encontradas</ThemedText>
             </View>
             <View style={styles.statItem}>
               <IconSymbol size={24} name="heart.fill" color="#FF9F43" />
               <ThemedText style={styles.statNumber}>
-                {stats.loading ? '...' : String(stats.reuniones)}
+                {stats.loading ? "..." : String(stats.reuniones)}
               </ThemedText>
               <ThemedText style={styles.statLabel}>Reuniones</ThemedText>
             </View>
@@ -403,32 +408,38 @@ export default function ProfileScreen() {
           ) : activity.items.length === 0 ? (
             <View style={styles.emptyState}>
               <IconSymbol size={50} name="clock.fill" color="#999" />
-              <ThemedText style={styles.emptyText}>Sin actividad reciente</ThemedText>
+              <ThemedText style={styles.emptyText}>
+                Sin actividad reciente
+              </ThemedText>
               <ThemedText style={styles.emptySubtext}>
                 Aquí verás tus reportes y otras interacciones
               </ThemedText>
             </View>
           ) : (
             <View
-              style={{ backgroundColor: '#F8F9FA', borderRadius: 12, padding: 10 }}
+              style={{
+                backgroundColor: "#F8F9FA",
+                borderRadius: 12,
+                padding: 10,
+              }}
             >
               {activity.items.map((item) => (
                 <View key={item.id} style={styles.activityItem}>
                   <IconSymbol
                     size={18}
                     name={
-                      item.type === 'reporte'
-                        ? 'doc.plaintext'
-                        : item.type === 'mascota'
-                        ? 'pawprint.fill'
-                        : 'bell.fill'
+                      item.type === "reporte"
+                        ? "doc.plaintext"
+                        : item.type === "mascota"
+                        ? "pawprint.fill"
+                        : "bell.fill"
                     }
                     color={
-                      item.type === 'reporte'
-                        ? '#4ECDC4'
-                        : item.type === 'mascota'
-                        ? '#2E86AB'
-                        : '#999'
+                      item.type === "reporte"
+                        ? "#4ECDC4"
+                        : item.type === "mascota"
+                        ? "#2E86AB"
+                        : "#999"
                     }
                   />
                   <View style={{ flex: 1, marginLeft: 10 }}>
@@ -458,29 +469,24 @@ export default function ProfileScreen() {
 
         <View style={styles.menuItem}>
           <TouchableOpacity
-            style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
-            onPress={() => router.push('/perfil/notificaciones')}
-          >
-            <IconSymbol size={20} name="bell.fill" color="#666" />
-            <ThemedText style={styles.menuText}>Notificaciones</ThemedText>
-            <IconSymbol size={16} name="chevron.right" color="#999" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.menuItem}>
-          <TouchableOpacity
-            style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
+            style={{ flexDirection: "row", flex: 1, alignItems: "center" }}
             onPress={toggleTheme}
           >
-            <IconSymbol size={20} name={isDark ? 'sun.max.fill' : 'moon.fill'} color="#666" />
-            <ThemedText style={styles.menuText}>{isDark ? 'Desactivar modo oscuro' : 'Activar modo oscuro'}</ThemedText>
+            <IconSymbol
+              size={20}
+              name={isDark ? "sun.max.fill" : "moon.fill"}
+              color="#666"
+            />
+            <ThemedText style={styles.menuText}>
+              {isDark ? "Desactivar modo oscuro" : "Activar modo oscuro"}
+            </ThemedText>
           </TouchableOpacity>
         </View>
 
         <View style={styles.menuItem}>
           <TouchableOpacity
-            style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
-            onPress={() => router.push('/perfil/ubicacion')}
+            style={{ flexDirection: "row", flex: 1, alignItems: "center" }}
+            onPress={() => router.push("/perfil/ubicacion")}
           >
             <IconSymbol size={20} name="location.fill" color="#666" />
             <ThemedText style={styles.menuText}>Ubicación</ThemedText>
@@ -490,8 +496,8 @@ export default function ProfileScreen() {
 
         <View style={styles.menuItem}>
           <TouchableOpacity
-            style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
-            onPress={() => router.push('/perfil/privacidad')}
+            style={{ flexDirection: "row", flex: 1, alignItems: "center" }}
+            onPress={() => router.push("/perfil/privacidad")}
           >
             <IconSymbol size={20} name="envelope.fill" color="#666" />
             <ThemedText style={styles.menuText}>Correo</ThemedText>
@@ -501,10 +507,14 @@ export default function ProfileScreen() {
 
         <View style={styles.menuItem}>
           <TouchableOpacity
-            style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
-            onPress={() => router.push('/perfil/soporte')}
+            style={{ flexDirection: "row", flex: 1, alignItems: "center" }}
+            onPress={() => router.push("/perfil/soporte")}
           >
-            <IconSymbol size={20} name="questionmark.circle.fill" color="#666" />
+            <IconSymbol
+              size={20}
+              name="questionmark.circle.fill"
+              color="#666"
+            />
             <ThemedText style={styles.menuText}>Ayuda y Soporte</ThemedText>
             <IconSymbol size={16} name="chevron.right" color="#999" />
           </TouchableOpacity>
@@ -513,19 +523,17 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <View style={[styles.menuItem, styles.logoutItem]}>
             <TouchableOpacity
-              style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
+              style={{ flexDirection: "row", flex: 1, alignItems: "center" }}
               onPress={logout}
               disabled={loggingOut}
             >
               <IconSymbol
                 size={20}
                 name="rectangle.portrait.and.arrow.right.fill"
-                color={loggingOut ? '#ccc' : '#FF6B6B'}
+                color={loggingOut ? "#ccc" : "#FF6B6B"}
               />
-              <ThemedText
-                style={[styles.menuText, styles.logoutText]}
-              >
-                {loggingOut ? 'Cerrando...' : 'Cerrar Sesión'}
+              <ThemedText style={[styles.menuText, styles.logoutText]}>
+                {loggingOut ? "Cerrando..." : "Cerrar Sesión"}
               </ThemedText>
               {loggingOut && <ActivityIndicator size="small" />}
             </TouchableOpacity>
@@ -540,56 +548,65 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 60 },
   content: { flex: 1, paddingHorizontal: 20 },
   section: { marginTop: 25 },
-  sectionTitle: { marginBottom: 15, fontSize: 20, fontWeight: 'bold' },
+  sectionTitle: { marginBottom: 15, fontSize: 20, fontWeight: "bold" },
 
   statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#F8F9FA',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: "#F8F9FA",
     borderRadius: 12,
     padding: 20,
   },
-  statItem: { alignItems: 'center' },
-  statNumber: { fontSize: 24, fontWeight: 'bold', marginTop: 8, marginBottom: 4 },
+  statItem: { alignItems: "center" },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginTop: 8,
+    marginBottom: 4,
+  },
   statLabel: { fontSize: 12, opacity: 0.6 },
 
   emptyState: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 40,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     borderRadius: 12,
   },
-  emptyText: { fontSize: 16, fontWeight: '600', marginTop: 15 },
+  emptyText: { fontSize: 16, fontWeight: "600", marginTop: 15 },
   emptySubtext: {
     fontSize: 14,
     opacity: 0.6,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 8,
     marginBottom: 20,
   },
 
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 15,
     paddingHorizontal: 15,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     borderRadius: 8,
     marginBottom: 8,
   },
   menuText: { flex: 1, fontSize: 16, marginLeft: 15 },
-  logoutItem: { backgroundColor: '#FFF5F5', borderWidth: 1, borderColor: '#FFE5E5' },
-  logoutText: { color: '#FF6B6B' },
+  logoutItem: {
+    backgroundColor: "#FFF5F5",
+    borderWidth: 1,
+    borderColor: "#FFE5E5",
+  },
+  logoutText: { color: "#FF6B6B" },
 
   activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#ECEFF1',
+    borderBottomColor: "#ECEFF1",
   },
-  activityTitle: { fontSize: 14, fontWeight: '600' },
+  activityTitle: { fontSize: 14, fontWeight: "600" },
   activitySubtitle: { fontSize: 12, opacity: 0.7 },
   activityDate: { fontSize: 10, opacity: 0.6, marginLeft: 8 },
-})
+});
