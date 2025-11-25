@@ -16,6 +16,7 @@ import {
 } from "react-native";
 
 import Encabezado from "../perfil/encabezado";
+import HistorialActividad from "../perfil/historial-actividad";
 import MisMascotas from "../perfil/mis-mascotas";
 
 type Mascota = {
@@ -44,17 +45,6 @@ export default function ProfileScreen() {
     reuniones: 0,
     loading: true,
   });
-
-  const [activity, setActivity] = useState<{
-    loading: boolean;
-    items: {
-      id: string;
-      at?: string | null;
-      type: "reporte" | "seguimiento" | "mascota";
-      title: string;
-      subtitle?: string;
-    }[];
-  }>({ loading: true, items: [] });
 
   const router = useRouter();
   const { isDark, toggleTheme } = useTheme();
@@ -163,114 +153,6 @@ export default function ProfileScreen() {
       }
     };
 
-    const loadActivity = async (userId: string) => {
-      try {
-        setActivity((prev) => ({ ...prev, loading: true }));
-
-        const repTry1 = await supabase
-          .from("reportes")
-          .select("id,titulo,created_at")
-          .eq("estado", "AC")
-          .eq("reportero_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(20);
-
-        const rep = repTry1.error
-          ? await supabase
-              .from("reportes")
-              .select("id,titulo")
-              .eq("estado", "AC")
-              .eq("reportero_id", userId)
-              .order("id", { ascending: false })
-              .limit(20)
-          : repTry1;
-
-        const segTry1 = await supabase
-          .from("seguimientos")
-          .select("id,reporte_id,created_at")
-          .eq("estado", "AC")
-          .eq("usuario_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(20);
-
-        const seg = segTry1.error
-          ? await supabase
-              .from("seguimientos")
-              .select("id,reporte_id")
-              .eq("estado", "AC")
-              .eq("usuario_id", userId)
-              .order("id", { ascending: false })
-              .limit(20)
-          : segTry1;
-
-        const masTry1 = await supabase
-          .from("mascotas")
-          .select("id,nombre,created_at")
-          .eq("estado", "AC")
-          .eq("duenio_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(20);
-
-        const mas = masTry1.error
-          ? await supabase
-              .from("mascotas")
-              .select("id,nombre")
-              .eq("estado", "AC")
-              .eq("duenio_id", userId)
-              .order("id", { ascending: false })
-              .limit(20)
-          : masTry1;
-
-        const items: {
-          id: string;
-          at?: string | null;
-          type: "reporte" | "seguimiento" | "mascota";
-          title: string;
-          subtitle?: string;
-        }[] = [];
-
-        (rep.data as any[])?.forEach((r) =>
-          items.push({
-            id: `rep-${r.id}`,
-            at: r.created_at ?? null,
-            type: "reporte",
-            title: r.titulo || "Reporte creado",
-            subtitle: `Reporte #${r.id}`,
-          })
-        );
-
-        (seg.data as any[])?.forEach((s) =>
-          items.push({
-            id: `seg-${s.id}`,
-            at: s.created_at ?? null,
-            type: "seguimiento",
-            title: "Comenzaste a seguir un reporte",
-            subtitle: `Reporte #${s.reporte_id}`,
-          })
-        );
-
-        (mas.data as any[])?.forEach((m) =>
-          items.push({
-            id: `mas-${m.id}`,
-            at: m.created_at ?? null,
-            type: "mascota",
-            title: "Registraste una mascota",
-            subtitle: m.nombre ? String(m.nombre) : undefined,
-          })
-        );
-
-        items.sort(
-          (a, b) =>
-            new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime()
-        );
-
-        setActivity({ loading: false, items: items.slice(0, 20) });
-      } catch (e) {
-        console.warn("[Perfil] Error cargando actividad:", e);
-        setActivity({ loading: false, items: [] });
-      }
-    };
-
     const loadUserData = async (user: any) => {
       try {
         const { data: perfil } = await supabase
@@ -302,14 +184,9 @@ export default function ProfileScreen() {
 
       if (user) {
         await loadUserData(user);
-        await Promise.all([
-          loadCounts(user.id),
-          loadActivity(user.id),
-          recargarMascotas(user.id),
-        ]);
+        await Promise.all([loadCounts(user.id), recargarMascotas(user.id)]);
       } else {
         setStats({ perdidas: 0, encontradas: 0, reuniones: 0, loading: false });
-        setActivity({ loading: false, items: [] });
         setMascotas([]);
       }
     };
@@ -332,16 +209,6 @@ export default function ProfileScreen() {
     } catch (error: any) {
       Alert.alert("Error", error.message);
       setLoggingOut(false);
-    }
-  };
-
-  const formatDate = (iso?: string | null) => {
-    if (!iso) return "";
-    try {
-      const d = new Date(iso);
-      return d.toLocaleString();
-    } catch {
-      return iso || "";
     }
   };
 
@@ -395,139 +262,58 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {userId && (
-          <MisMascotas
-            mascotas={mascotas}
-            setMascotas={setMascotas}
-            userId={userId}
-            recargarMascotas={recargarMascotas}
-          />
-        )}
-
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
-            Historial de Actividad
-          </Text>
-          {activity.loading ? (
-            <View style={styles.emptyState}>
-              <ActivityIndicator size="small" />
-              <ThemedText style={[styles.emptySubtext, { marginTop: 10 }]}>
-                Cargando actividad...
-              </ThemedText>
-            </View>
-          ) : activity.items.length === 0 ? (
-            <View style={styles.emptyState}>
-              <IconSymbol size={50} name="clock.fill" color="#999" />
-              <ThemedText style={styles.emptyText}>
-                Sin actividad reciente
-              </ThemedText>
-              <ThemedText style={styles.emptySubtext}>
-                Aquí verás tus reportes y otras interacciones
-              </ThemedText>
-            </View>
-          ) : (
-            <View
-              style={{
-                backgroundColor: "#F8F9FA",
-                borderRadius: 12,
-                padding: 10,
-              }}
-            >
-              {activity.items.map((item) => (
-                <View key={item.id} style={styles.activityItem}>
-                  <IconSymbol
-                    size={18}
-                    name={
-                      item.type === "reporte"
-                        ? "doc.plaintext"
-                        : item.type === "mascota"
-                        ? "pawprint.fill"
-                        : "bell.fill"
-                    }
-                    color={
-                      item.type === "reporte"
-                        ? "#4ECDC4"
-                        : item.type === "mascota"
-                        ? "#2E86AB"
-                        : "#999"
-                    }
-                  />
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <ThemedText style={styles.activityTitle}>
-                      {item.title}
-                    </ThemedText>
-                    {!!item.subtitle && (
-                      <ThemedText style={styles.activitySubtitle}>
-                        {item.subtitle}
-                      </ThemedText>
-                    )}
-                  </View>
-                  {!!item.at && (
-                    <ThemedText style={styles.activityDate}>
-                      {formatDate(item.at)}
-                    </ThemedText>
-                  )}
-                </View>
-              ))}
-            </View>
+          {userId && (
+            <MisMascotas
+              mascotas={mascotas}
+              setMascotas={setMascotas}
+              userId={userId}
+              recargarMascotas={recargarMascotas}
+            />
           )}
         </View>
 
-        <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
-          Configuración
-        </Text>
-
-        <View style={styles.menuItem}>
-          <TouchableOpacity
-            style={{ flexDirection: "row", flex: 1, alignItems: "center" }}
-            onPress={toggleTheme}
-          >
-            <IconSymbol
-              size={20}
-              name={isDark ? "sun.max.fill" : "moon.fill"}
-              color="#666"
-            />
-            <ThemedText style={styles.menuText}>
-              {isDark ? "Desactivar modo oscuro" : "Activar modo oscuro"}
-            </ThemedText>
-          </TouchableOpacity>
+        <View style={styles.section}>
+          {userId && <HistorialActividad userId={userId} />}
         </View>
 
-        <View style={styles.menuItem}>
-          <TouchableOpacity
-            style={{ flexDirection: "row", flex: 1, alignItems: "center" }}
-            onPress={() => router.push("/perfil/ubicacion")}
+        <View style={styles.section}>
+          <Text
+            style={[styles.sectionTitle, { color: isDark ? "#fff" : "#333" }]}
           >
-            <IconSymbol size={20} name="location.fill" color="#666" />
-            <ThemedText style={styles.menuText}>Ubicación</ThemedText>
-            <IconSymbol size={16} name="chevron.right" color="#999" />
-          </TouchableOpacity>
-        </View>
+            Configuración
+          </Text>
 
-        <View style={styles.menuItem}>
-          <TouchableOpacity
-            style={{ flexDirection: "row", flex: 1, alignItems: "center" }}
-            onPress={() => router.push("/perfil/privacidad")}
-          >
-            <IconSymbol size={20} name="envelope.fill" color="#666" />
-            <ThemedText style={styles.menuText}>Correo</ThemedText>
-            <IconSymbol size={16} name="chevron.right" color="#999" />
-          </TouchableOpacity>
-        </View>
+          <View style={styles.menuItem}>
+            <TouchableOpacity
+              style={{ flexDirection: "row", flex: 1, alignItems: "center" }}
+              onPress={toggleTheme}
+            >
+              <IconSymbol
+                size={20}
+                name={isDark ? "sun.max.fill" : "moon.fill"}
+                color="#666"
+              />
+              <ThemedText style={styles.menuText}>
+                {isDark ? "Desactivar modo oscuro" : "Activar modo oscuro"}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.menuItem}>
-          <TouchableOpacity
-            style={{ flexDirection: "row", flex: 1, alignItems: "center" }}
-            onPress={() => router.push("/perfil/soporte")}
-          >
-            <IconSymbol
-              size={20}
-              name="questionmark.circle.fill"
-              color="#666"
-            />
-            <ThemedText style={styles.menuText}>Ayuda y Soporte</ThemedText>
-            <IconSymbol size={16} name="chevron.right" color="#999" />
-          </TouchableOpacity>
+          <View style={styles.menuItem}>
+            <TouchableOpacity
+              style={{ flexDirection: "row", flex: 1, alignItems: "center" }}
+              onPress={() => router.push("/perfil/soporte")}
+            >
+              <IconSymbol
+                size={20}
+                name="questionmark.circle.fill"
+                color="#666"
+              />
+              <ThemedText style={styles.menuText}>Ayuda y Soporte</ThemedText>
+              <IconSymbol size={16} name="chevron.right" color="#999" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -571,7 +357,7 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: "bold",
-    marginTop: 8,
+    marginTop: 4,
     marginBottom: 4,
   },
   statLabel: { fontSize: 12, opacity: 0.6 },
