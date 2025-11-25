@@ -243,6 +243,68 @@ export default function ReportFoundScreen() {
 
       // 2. Abrir selector de imágenes
       console.log("[Reporte Encontradas] Abriendo selector de imágenes...");
+
+      const sacarFoto = async () => {
+        try {
+          console.log("[Reporte Encontradas] Iniciando captura de foto...");
+      
+          // 1. Permisos de cámara
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== "granted") {
+            Alert.alert(
+              "Permiso necesario",
+              "Necesitamos acceso a la cámara para sacar una foto"
+            );
+            return;
+          }
+      
+          // 2. Abrir cámara
+          const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.8,
+          });
+      
+          if (result.canceled || !result.assets || result.assets.length === 0) {
+            console.log("[Reporte Encontradas] Captura cancelada");
+            return;
+          }
+      
+          const image = result.assets[0];
+          console.log("[Reporte Encontradas] Foto capturada:", {
+            uri: image.uri,
+            width: image.width,
+            height: image.height,
+            type: image.type,
+          });
+      
+          // 3. Procesar igual que en elegirFoto
+          const processedImage = await ImageManipulator.manipulateAsync(
+            image.uri,
+            [{ resize: { width: 1200 } }],
+            { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+          );
+      
+          setFoto({
+            uri: processedImage.uri,
+            width: processedImage.width,
+            height: processedImage.height,
+          });
+      
+          console.log("[Reporte Encontradas] Foto lista para subir:", {
+            uri: processedImage.uri,
+            width: processedImage.width,
+            height: processedImage.height,
+          });
+        } catch (error) {
+          console.error("[Reporte Encontradas] Error al sacar la foto:", error);
+          Alert.alert(
+            "Error",
+            "No se pudo usar la cámara. Por favor, inténtalo de nuevo."
+          );
+        }
+      };
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -819,9 +881,10 @@ export default function ReportFoundScreen() {
             />
           </View>
         </View>
-
         <View style={styles.formSection}>
-          <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
+          <Text
+            style={[styles.sectionTitle, { color: isDark ? "#fff" : "#333" }]}
+          >
             Fotografía
           </Text>
           {foto ? (
@@ -859,11 +922,7 @@ export default function ReportFoundScreen() {
               </View>
             </View>
           ) : (
-            <TouchableOpacity
-              style={styles.photoPlaceholder}
-              onPress={elegirFoto}
-              disabled={loading.publicando}
-            >
+            <View style={styles.photoPlaceholder}>
               <IconSymbol size={50} name="camera.fill" color="#999" />
               <ThemedText style={styles.photoText}>
                 Agregar foto de la mascota
@@ -871,7 +930,88 @@ export default function ReportFoundScreen() {
               <ThemedText style={styles.photoSubtext}>
                 Ayuda a identificar a la mascota
               </ThemedText>
-            </TouchableOpacity>
+
+              <View style={styles.photoButtonsRow}>
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={async () => {
+                    try {
+                      console.log(
+                        "[Reporte Encontradas] Iniciando captura de foto..."
+                      );
+
+                      const { status } =
+                        await ImagePicker.requestCameraPermissionsAsync();
+                      if (status !== "granted") {
+                        Alert.alert(
+                          "Permiso necesario",
+                          "Necesitamos acceso a la cámara para sacar una foto"
+                        );
+                        return;
+                      }
+
+                      const result = await ImagePicker.launchCameraAsync({
+                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                        allowsEditing: true,
+                        aspect: [4, 3],
+                        quality: 0.8,
+                      });
+
+                      if (
+                        result.canceled ||
+                        !result.assets ||
+                        result.assets.length === 0
+                      ) {
+                        console.log("[Reporte Encontradas] Captura cancelada");
+                        return;
+                      }
+
+                      const image = result.assets[0];
+
+                      const processedImage =
+                        await ImageManipulator.manipulateAsync(
+                          image.uri,
+                          [{ resize: { width: 1200 } }],
+                          {
+                            compress: 0.8,
+                            format: ImageManipulator.SaveFormat.JPEG,
+                          }
+                        );
+
+                      setFoto({
+                        uri: processedImage.uri,
+                        width: processedImage.width,
+                        height: processedImage.height,
+                      });
+                    } catch (error) {
+                      console.error(
+                        "[Reporte Encontradas] Error al sacar la foto:",
+                        error
+                      );
+                      Alert.alert(
+                        "Error",
+                        "No se pudo usar la cámara. Por favor, inténtalo de nuevo."
+                      );
+                    }
+                  }}
+                  disabled={loading.publicando}
+                >
+                  <ThemedText style={styles.secondaryButtonText}>
+                    Sacar foto
+                  </ThemedText>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={elegirFoto}
+                  disabled={loading.publicando}
+                >
+                  <ThemedText style={styles.secondaryButtonText}>
+                    Elegir de galería
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
 
           {loading.subiendoFoto && (
