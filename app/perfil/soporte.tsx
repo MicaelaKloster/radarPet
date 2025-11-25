@@ -1,9 +1,11 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import React from "react";
-import { Linking, StyleSheet, TouchableOpacity } from "react-native";
+import { Linking, StyleSheet, TouchableOpacity, Text } from "react-native";
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function SupportSettings() {
+  const { isDark } = useTheme();
   const handleEmailPress = () => {
     const email = "radarpet.soporte@gmail.com";
     const subject = "Soporte RadarPet";
@@ -17,14 +19,14 @@ export default function SupportSettings() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="subtitle">Ayuda y Soporte</ThemedText>
-      <ThemedText style={{ marginTop: 20 }}>
+      <Text style={{ fontSize: 20, fontWeight: 'bold', color: isDark ? '#fff' : '#000' }}>Ayuda y Soporte</Text>
+      <Text style={{ marginTop: 20, color: isDark ? '#fff' : '#000' }}>
         ¿Necesitas ayuda? Escríbenos a:
-      </ThemedText>
+      </Text>
       <TouchableOpacity onPress={handleEmailPress}>
-        <ThemedText style={{ fontWeight: "bold", marginTop: 10 }}>
+        <Text style={{ fontWeight: "bold", marginTop: 10, color: isDark ? '#fff' : '#000' }}>
           radarpet.soporte@gmail.com
-        </ThemedText>
+        </Text>
       </TouchableOpacity>
     </ThemedView>
   );
