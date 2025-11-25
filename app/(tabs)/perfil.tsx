@@ -1,8 +1,10 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import ThemeSelector from "@/components/ThemeSelector";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/lib/supabase";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -14,7 +16,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import ThemeSelector from "@/components/ThemeSelector";
 
 import Encabezado from "../perfil/encabezado";
 import HistorialActividad from "../perfil/historial-actividad";
@@ -83,77 +84,77 @@ export default function ProfileScreen() {
     }
   };
 
+  const loadCounts = async (userId: string) => {
+    try {
+      setStats((prev) => ({ ...prev, loading: true }));
+
+      const [tipoPerdidaRes, tipoEncontradaRes, estadosCierre] =
+        await Promise.all([
+          supabase
+            .from("tipos_reportes")
+            .select("id")
+            .eq("nombre", "perdida")
+            .eq("estado", "AC")
+            .maybeSingle(),
+          supabase
+            .from("tipos_reportes")
+            .select("id")
+            .eq("nombre", "encontrada")
+            .eq("estado", "AC")
+            .maybeSingle(),
+          supabase
+            .from("estados_reportes")
+            .select("id,nombre")
+            .in("nombre", ["cerrado", "resuelto", "reunido"])
+            .eq("estado", "AC"),
+        ]);
+
+      const tipoPerdidaId = (tipoPerdidaRes.data as any)?.id || null;
+      const tipoEncontradaId = (tipoEncontradaRes.data as any)?.id || null;
+      const estadosCierreIds =
+        (estadosCierre.data as any[])?.map((r) => r.id) || [];
+
+      const [perdidasCntRes, encontradasCntRes, reunionesCntRes] =
+        await Promise.all([
+          tipoPerdidaId
+            ? supabase
+                .from("reportes")
+                .select("id", { count: "exact", head: true })
+                .eq("estado", "AC")
+                .eq("reportero_id", userId)
+                .eq("tipo_id", tipoPerdidaId)
+            : Promise.resolve({ count: 0 } as any),
+          tipoEncontradaId
+            ? supabase
+                .from("reportes")
+                .select("id", { count: "exact", head: true })
+                .eq("estado", "AC")
+                .eq("reportero_id", userId)
+                .eq("tipo_id", tipoEncontradaId)
+            : Promise.resolve({ count: 0 } as any),
+          estadosCierreIds.length
+            ? supabase
+                .from("reportes")
+                .select("id", { count: "exact", head: true })
+                .eq("estado", "AC")
+                .eq("reportero_id", userId)
+                .in("estado_id", estadosCierreIds)
+            : Promise.resolve({ count: 0 } as any),
+        ]);
+
+      setStats({
+        perdidas: (perdidasCntRes as any)?.count ?? 0,
+        encontradas: (encontradasCntRes as any)?.count ?? 0,
+        reuniones: (reunionesCntRes as any)?.count ?? 0,
+        loading: false,
+      });
+    } catch (e) {
+      console.warn("[Perfil] Error cargando contadores:", e);
+      setStats((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
   useEffect(() => {
-    const loadCounts = async (userId: string) => {
-      try {
-        setStats((prev) => ({ ...prev, loading: true }));
-
-        const [tipoPerdidaRes, tipoEncontradaRes, estadosCierre] =
-          await Promise.all([
-            supabase
-              .from("tipos_reportes")
-              .select("id")
-              .eq("nombre", "perdida")
-              .eq("estado", "AC")
-              .maybeSingle(),
-            supabase
-              .from("tipos_reportes")
-              .select("id")
-              .eq("nombre", "encontrada")
-              .eq("estado", "AC")
-              .maybeSingle(),
-            supabase
-              .from("estados_reportes")
-              .select("id,nombre")
-              .in("nombre", ["cerrado", "resuelto", "reunido"])
-              .eq("estado", "AC"),
-          ]);
-
-        const tipoPerdidaId = (tipoPerdidaRes.data as any)?.id || null;
-        const tipoEncontradaId = (tipoEncontradaRes.data as any)?.id || null;
-        const estadosCierreIds =
-          (estadosCierre.data as any[])?.map((r) => r.id) || [];
-
-        const [perdidasCntRes, encontradasCntRes, reunionesCntRes] =
-          await Promise.all([
-            tipoPerdidaId
-              ? supabase
-                  .from("reportes")
-                  .select("id", { count: "exact", head: true })
-                  .eq("estado", "AC")
-                  .eq("reportero_id", userId)
-                  .eq("tipo_id", tipoPerdidaId)
-              : Promise.resolve({ count: 0 } as any),
-            tipoEncontradaId
-              ? supabase
-                  .from("reportes")
-                  .select("id", { count: "exact", head: true })
-                  .eq("estado", "AC")
-                  .eq("reportero_id", userId)
-                  .eq("tipo_id", tipoEncontradaId)
-              : Promise.resolve({ count: 0 } as any),
-            estadosCierreIds.length
-              ? supabase
-                  .from("reportes")
-                  .select("id", { count: "exact", head: true })
-                  .eq("estado", "AC")
-                  .eq("reportero_id", userId)
-                  .in("estado_id", estadosCierreIds)
-              : Promise.resolve({ count: 0 } as any),
-          ]);
-
-        setStats({
-          perdidas: (perdidasCntRes as any)?.count ?? 0,
-          encontradas: (encontradasCntRes as any)?.count ?? 0,
-          reuniones: (reunionesCntRes as any)?.count ?? 0,
-          loading: false,
-        });
-      } catch (e) {
-        console.warn("[Perfil] Error cargando contadores:", e);
-        setStats((prev) => ({ ...prev, loading: false }));
-      }
-    };
-
     const loadUserData = async (user: any) => {
       try {
         const { data: perfil } = await supabase
@@ -194,6 +195,15 @@ export default function ProfileScreen() {
 
     load();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (userId) {
+        loadCounts(userId);
+        recargarMascotas(userId);
+      }
+    }, [userId])
+  );
 
   const handleAvatarChange = (newUrl: string) => {
     setAvatarUri(newUrl);
@@ -275,7 +285,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          {userId && <HistorialActividad userId={userId} />}
+          {userId && <HistorialActividad userId={userId} key={Date.now()} />}
         </View>
 
         <View style={styles.section}>

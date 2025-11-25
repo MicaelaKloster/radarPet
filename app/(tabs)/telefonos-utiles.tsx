@@ -1,30 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { Colors } from "@/constants/Theme";
+import { useTheme } from "@/contexts/ThemeContext";
+import pin_bomberos from "@/Iconos/pin_bomberos.png";
+import pin_policia from "@/Iconos/pin_policia.png";
+import pin_refugios from "@/Iconos/pin_refugio.png";
+import pin_veterinarias from "@/Iconos/pin_veterinaria.png";
+import { Image } from "expo-image";
+import * as Location from "expo-location";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Linking,
   ActivityIndicator,
   Alert,
+  FlatList,
+  Linking,
   Platform,
   RefreshControl,
-} from 'react-native';
-import * as Location from 'expo-location';
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import { useTheme } from '@/contexts/ThemeContext';
-import { Image } from 'expo-image';
-import pin_bomberos from '@/Iconos/pin_bomberos.png';
-import pin_policia from '@/Iconos/pin_policia.png';
-import pin_refugios from '@/Iconos/pin_refugio.png';
-import pin_veterinarias from '@/Iconos/pin_veterinaria.png';
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export type ServiceContact = {
   id: string;
-  tipo: 'bomberos' | 'policia' | 'refugio' | 'veterinaria';
+  tipo: "bomberos" | "policia" | "refugio" | "veterinaria";
   nombre: string;
   direccion?: string;
   telefono?: string;
@@ -40,7 +41,7 @@ async function fetchNearbyServices(
   radiusKm: number = 10
 ): Promise<ServiceContact[]> {
   const radius = radiusKm * 1000;
-  
+
   const query = `
     [out:json][timeout:25];
     (
@@ -57,12 +58,12 @@ async function fetchNearbyServices(
   `;
 
   try {
-    const response = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
+    const response = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
       body: query,
     });
 
-    if (!response.ok) throw new Error('Error en Overpass API');
+    if (!response.ok) throw new Error("Error en Overpass API");
 
     const data = await response.json();
     const services: ServiceContact[] = [];
@@ -71,23 +72,23 @@ async function fetchNearbyServices(
       // Para ways, usar el centro
       const elementLat = element.lat || element.center?.lat;
       const elementLon = element.lon || element.center?.lon;
-      
+
       if (!elementLat || !elementLon) return;
 
-      let tipo: ServiceContact['tipo'] | null = null;
-      
+      let tipo: ServiceContact["tipo"] | null = null;
+
       switch (element.tags?.amenity) {
-        case 'fire_station':
-          tipo = 'bomberos';
+        case "fire_station":
+          tipo = "bomberos";
           break;
-        case 'police':
-          tipo = 'policia';
+        case "police":
+          tipo = "policia";
           break;
-        case 'animal_shelter':
-          tipo = 'refugio';
+        case "animal_shelter":
+          tipo = "refugio";
           break;
-        case 'veterinary':
-          tipo = 'veterinaria';
+        case "veterinary":
+          tipo = "veterinaria";
           break;
       }
 
@@ -100,7 +101,7 @@ async function fetchNearbyServices(
           tipo,
           nombre: element.tags?.name || getTipoLabel(tipo),
           direccion: buildAddress(element.tags),
-          telefono: element.tags?.phone || element.tags?.['contact:phone'],
+          telefono: element.tags?.phone || element.tags?.["contact:phone"],
           distancia,
           lat: elementLat,
           lng: elementLon,
@@ -111,13 +112,18 @@ async function fetchNearbyServices(
     // Ordenar por distancia
     return services.sort((a, b) => (a.distancia || 0) - (b.distancia || 0));
   } catch (error) {
-    console.error('Error obteniendo servicios:', error);
+    console.error("Error obteniendo servicios:", error);
     throw error;
   }
 }
 
 // Calcular distancia usando fórmula de Haversine
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
   const R = 6371e3; // Radio de la Tierra en metros
   const φ1 = (lat1 * Math.PI) / 180;
   const φ2 = (lat2 * Math.PI) / 180;
@@ -135,25 +141,25 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 // Construir dirección desde tags
 function buildAddress(tags: any): string {
   const parts = [];
-  if (tags?.['addr:street']) parts.push(tags['addr:street']);
-  if (tags?.['addr:housenumber']) parts.push(tags['addr:housenumber']);
-  if (tags?.['addr:city']) parts.push(tags['addr:city']);
-  return parts.join(', ') || undefined;
+  if (tags?.["addr:street"]) parts.push(tags["addr:street"]);
+  if (tags?.["addr:housenumber"]) parts.push(tags["addr:housenumber"]);
+  if (tags?.["addr:city"]) parts.push(tags["addr:city"]);
+  return parts.join(", ") || undefined;
 }
 
 // Obtener etiqueta por tipo
-function getTipoLabel(tipo: ServiceContact['tipo']): string {
+function getTipoLabel(tipo: ServiceContact["tipo"]): string {
   const labels = {
-    bomberos: 'Bomberos',
-    policia: 'Policía',
-    refugio: 'Refugio de Animales',
-    veterinaria: 'Veterinaria',
+    bomberos: "Bomberos",
+    policia: "Policía",
+    refugio: "Refugio de Animales",
+    veterinaria: "Veterinaria",
   };
   return labels[tipo];
 }
 
 // Obtener ícono por tipo
-function getIconSource(tipo: ServiceContact['tipo']) {
+function getIconSource(tipo: ServiceContact["tipo"]) {
   const icons = {
     bomberos: pin_bomberos,
     policia: pin_policia,
@@ -164,19 +170,19 @@ function getIconSource(tipo: ServiceContact['tipo']) {
 }
 
 // Obtener color por tipo
-function getTypeColor(tipo: ServiceContact['tipo']): string {
+function getTypeColor(tipo: ServiceContact["tipo"]): string {
   const colors = {
-    bomberos: '#ffde59',
-    policia: '#045279',
-    refugio: '#ff751f',
-    veterinaria: '#79cb43',
+    bomberos: "#ffde59",
+    policia: "#045279",
+    refugio: "#ff751f",
+    veterinaria: "#79cb43",
   };
   return colors[tipo];
 }
 
 // Formatear distancia
 function formatDistance(meters?: number): string {
-  if (!meters) return '';
+  if (!meters) return "";
   if (meters < 1000) return `${Math.round(meters)}m`;
   return `${(meters / 1000).toFixed(1)}km`;
 }
@@ -186,20 +192,25 @@ export default function TelefonosUtiles() {
   const [services, setServices] = useState<ServiceContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [selectedFilter, setSelectedFilter] = useState<ServiceContact['tipo'] | 'todos'>('todos');
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<
+    ServiceContact["tipo"] | "todos"
+  >("todos");
 
   const loadServices = async () => {
     try {
       setLoading(true);
-      
+
       // Solicitar permisos de ubicación
       const { status } = await Location.requestForegroundPermissionsAsync();
-      
-      if (status !== 'granted') {
+
+      if (status !== "granted") {
         Alert.alert(
-          'Permiso requerido',
-          'Se necesita acceso a la ubicación para mostrar servicios cercanos.'
+          "Permiso requerido",
+          "Se necesita acceso a la ubicación para mostrar servicios cercanos."
         );
         return;
       }
@@ -216,8 +227,8 @@ export default function TelefonosUtiles() {
       const data = await fetchNearbyServices(coords.lat, coords.lng, 10);
       setServices(data);
     } catch (error) {
-      console.error('Error cargando servicios:', error);
-      Alert.alert('Error', 'No se pudieron cargar los servicios cercanos.');
+      console.error("Error cargando servicios:", error);
+      Alert.alert("Error", "No se pudieron cargar los servicios cercanos.");
     } finally {
       setLoading(false);
     }
@@ -236,75 +247,94 @@ export default function TelefonosUtiles() {
   const handleCall = (service: ServiceContact) => {
     if (!service.telefono) {
       Alert.alert(
-        'Teléfono no disponible',
-        'Este establecimiento no tiene un número de teléfono registrado.'
+        "Teléfono no disponible",
+        "Este establecimiento no tiene un número de teléfono registrado."
       );
       return;
     }
 
-    const phoneNumber = service.telefono.replace(/\s/g, '');
-    const url = Platform.OS === 'ios' ? `telprompt:${phoneNumber}` : `tel:${phoneNumber}`;
+    const phoneNumber = service.telefono.replace(/\s/g, "");
+    const url =
+      Platform.OS === "ios" ? `telprompt:${phoneNumber}` : `tel:${phoneNumber}`;
 
-    Alert.alert(
-      'Llamar',
-      `¿Deseas llamar a ${service.nombre}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Llamar',
-          onPress: () => {
-            Linking.openURL(url).catch(() => {
-              Alert.alert('Error', 'No se pudo realizar la llamada.');
-            });
-          },
+    Alert.alert("Llamar", `¿Deseas llamar a ${service.nombre}?`, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Llamar",
+        onPress: () => {
+          Linking.openURL(url).catch(() => {
+            Alert.alert("Error", "No se pudo realizar la llamada.");
+          });
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleOpenMap = (service: ServiceContact) => {
     const url = Platform.select({
       ios: `maps:0,0?q=${service.lat},${service.lng}`,
-      android: `geo:0,0?q=${service.lat},${service.lng}(${encodeURIComponent(service.nombre)})`,
+      android: `geo:0,0?q=${service.lat},${service.lng}(${encodeURIComponent(
+        service.nombre
+      )})`,
     });
 
     if (url) {
       Linking.openURL(url).catch(() => {
-        Alert.alert('Error', 'No se pudo abrir el mapa.');
+        Alert.alert("Error", "No se pudo abrir el mapa.");
       });
     }
   };
 
   const filteredServices = services.filter(
-    (s) => selectedFilter === 'todos' || s.tipo === selectedFilter
+    (s) => selectedFilter === "todos" || s.tipo === selectedFilter
   );
 
-  const filters: Array<{ key: ServiceContact['tipo'] | 'todos'; label: string }> = [
-    { key: 'todos', label: 'Todos' },
-    { key: 'veterinaria', label: 'Veterinarias' },
-    { key: 'refugio', label: 'Refugios' },
-    { key: 'policia', label: 'Policía' },
-    { key: 'bomberos', label: 'Bomberos' },
+  const filters: Array<{
+    key: ServiceContact["tipo"] | "todos";
+    label: string;
+  }> = [
+    { key: "todos", label: "Todos" },
+    { key: "veterinaria", label: "Veterinarias" },
+    { key: "refugio", label: "Refugios" },
+    { key: "policia", label: "Policía" },
+    { key: "bomberos", label: "Bomberos" },
   ];
 
   const renderItem = ({ item }: { item: ServiceContact }) => (
-    <View style={[styles.card, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
+    <View
+      style={[styles.card, { backgroundColor: isDark ? "#1F2937" : "#FFFFFF" }]}
+    >
       <View style={styles.cardHeader}>
         <Image source={getIconSource(item.tipo)} style={styles.cardIcon} />
         <View style={styles.cardInfo}>
-          <Text style={[styles.cardTitle, { color: isDark ? '#FFFFFF' : '#1F2937' }]}>
+          <Text
+            style={[
+              styles.cardTitle,
+              { color: isDark ? "#FFFFFF" : "#1F2937" },
+            ]}
+          >
             {item.nombre}
           </Text>
           <Text style={[styles.cardType, { color: getTypeColor(item.tipo) }]}>
             {getTipoLabel(item.tipo)}
           </Text>
           {item.direccion && (
-            <Text style={[styles.cardAddress, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+            <Text
+              style={[
+                styles.cardAddress,
+                { color: isDark ? "#9CA3AF" : "#6B7280" },
+              ]}
+            >
               📍 {item.direccion}
             </Text>
           )}
           {item.distancia && (
-            <Text style={[styles.cardDistance, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+            <Text
+              style={[
+                styles.cardDistance,
+                { color: isDark ? "#9CA3AF" : "#6B7280" },
+              ]}
+            >
               📏 {formatDistance(item.distancia)}
             </Text>
           )}
@@ -343,7 +373,12 @@ export default function TelefonosUtiles() {
       <ThemedView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2CBDAA" />
-          <Text style={[styles.loadingText, { color: isDark ? '#FFFFFF' : '#6B7280' }]}>
+          <Text
+            style={[
+              styles.loadingText,
+              { color: isDark ? "#FFFFFF" : "#6B7280" },
+            ]}
+          >
             Buscando servicios cercanos...
           </Text>
         </View>
@@ -354,8 +389,14 @@ export default function TelefonosUtiles() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
-        <ThemedText style={styles.title}>Teléfonos Útiles</ThemedText>
-        <ThemedText style={styles.subtitle}>
+        <ThemedText
+          style={[styles.title, { color: isDark ? "#FFFFFF" : Colors.text }]}
+        >
+          Teléfonos Útiles
+        </ThemedText>
+        <ThemedText
+          style={[styles.subtitle, { color: isDark ? "#FFFFFF" : Colors.text }]}
+        >
           Servicios cercanos a tu ubicación
         </ThemedText>
       </View>
@@ -395,12 +436,25 @@ export default function TelefonosUtiles() {
         renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2CBDAA']} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#2CBDAA"]}
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <IconSymbol name="exclamationmark.triangle" size={64} color="#9CA3AF" />
-            <Text style={[styles.emptyText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+            <IconSymbol
+              name="exclamationmark.triangle"
+              size={64}
+              color="#9CA3AF"
+            />
+            <Text
+              style={[
+                styles.emptyText,
+                { color: isDark ? "#9CA3AF" : "#6B7280" },
+              ]}
+            >
               No se encontraron servicios cercanos
             </Text>
             <TouchableOpacity style={styles.retryButton} onPress={loadServices}>
@@ -424,7 +478,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   subtitle: {
@@ -439,19 +493,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: "#E5E7EB",
     marginRight: 8,
   },
   filterButtonActive: {
-    backgroundColor: '#2CBDAA',
+    backgroundColor: "#2CBDAA",
   },
   filterButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: "600",
+    color: "#6B7280",
   },
   filterButtonTextActive: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   listContainer: {
     padding: 16,
@@ -460,14 +514,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   cardHeader: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 12,
   },
   cardIcon: {
@@ -480,12 +534,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   cardType: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 4,
   },
   cardAddress: {
@@ -496,66 +550,66 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   cardActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   actionButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 12,
     borderRadius: 8,
     gap: 6,
   },
   callButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
   },
   mapButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: "#3B82F6",
   },
   disabledButton: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: "#E5E7EB",
   },
   actionButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   disabledButtonText: {
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 48,
   },
   emptyText: {
     fontSize: 16,
     marginTop: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   retryButton: {
     marginTop: 16,
-    backgroundColor: '#2CBDAA',
+    backgroundColor: "#2CBDAA",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
