@@ -9,12 +9,12 @@ interface CustomTabIconProps {
 
 const iconMap = {
   inicio: {
-    active: require('@/Iconos/IconoInicioFinal.png'),
-    inactive: require('@/Iconos/IconoInicioFinal_Gris.png'),
-  },
-  mapa: {
     active: require('@/Iconos/IconoLupa.png'),
     inactive: require('@/Iconos/IconoLupa_Gris.png'),
+  },
+  mapa: {
+    active: require('@/Iconos/IconoInicioFinal.png'),
+    inactive: require('@/Iconos/IconoInicioFinal_Gris.png'),
   },
   // patita: {
   //   active: require('@/Iconos/IconoPatita.png'),

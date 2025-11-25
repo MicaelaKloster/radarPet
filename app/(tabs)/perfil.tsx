@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import ThemeSelector from "@/components/ThemeSelector";
 
 import Encabezado from "../perfil/encabezado";
 import HistorialActividad from "../perfil/historial-actividad";
@@ -47,7 +48,7 @@ export default function ProfileScreen() {
   });
 
   const router = useRouter();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
 
   const recargarMascotas = async (uid?: string) => {
     const id = uid || userId;
@@ -284,21 +285,7 @@ export default function ProfileScreen() {
             Configuración
           </Text>
 
-          <View style={styles.menuItem}>
-            <TouchableOpacity
-              style={{ flexDirection: "row", flex: 1, alignItems: "center" }}
-              onPress={toggleTheme}
-            >
-              <IconSymbol
-                size={20}
-                name={isDark ? "sun.max.fill" : "moon.fill"}
-                color="#666"
-              />
-              <ThemedText style={styles.menuText}>
-                {isDark ? "Desactivar modo oscuro" : "Activar modo oscuro"}
-              </ThemedText>
-            </TouchableOpacity>
-          </View>
+          <ThemeSelector />
 
           <View style={styles.menuItem}>
             <TouchableOpacity
