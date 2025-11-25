@@ -3,7 +3,7 @@ import { Image, StyleSheet } from 'react-native';
 
 interface CustomTabIconProps {
   focused: boolean;
-  iconName: 'inicio' | 'mapa' | 'patita' | 'perfil';
+  iconName: 'inicio' | 'mapa' | 'patita' | 'perfil' | 'telefono_utiles';
   size?: number;
 }
 
@@ -24,6 +24,10 @@ const iconMap = {
     active: require('@/Iconos/IconoPerfil.png'),
     inactive: require('@/Iconos/IconoPerfil_Gris.png'),
   },
+  telefono_utiles: {
+    active: require('@/Iconos/IconoTelefono.png'),
+    inactive: require('@/Iconos/IconoTelefono_Gris.png'),
+  }
 };
 
 export function CustomTabIcon({ focused, iconName, size = 24 }: CustomTabIconProps) {

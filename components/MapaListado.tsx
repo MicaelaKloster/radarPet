@@ -7,6 +7,10 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import patita_roja from "../Iconos/patita_roja.png";
 import patita_verde from "../Iconos/patita_verde.png";
+import pin_bomberos from "../Iconos/pin_bomberos.png";
+import pin_policia from "../Iconos/pin_policia.png";
+import pin_refugios from "../Iconos/pin_refugio.png";
+import pin_veterinarias from "../Iconos/pin_veterinaria.png";
 
 export type ReportMarker = {
   id: string;
@@ -17,9 +21,16 @@ export type ReportMarker = {
   fotoUrl?: string | null;
 };
 
-// ---------------------------
-// 🔥 Parser correcto: WKB HEX
-// ---------------------------
+export type ServiceMarker = {
+  id: string;
+  lat: number;
+  lng: number;
+  tipo: "bomberos" | "policia" | "refugio" | "veterinaria";
+  nombre: string;
+  direccion?: string;
+};
+
+// Parser WKB
 function parseWKBPoint(wkb?: string | null): { lat: number; lng: number } | null {
   if (!wkb || wkb.length < 32) return null;
 
@@ -44,15 +55,105 @@ function parseWKBPoint(wkb?: string | null): { lat: number; lng: number } | null
 
     return { lat, lng };
   } catch (e) {
-    console.error("❌ Error parseando WKB:", e);
+    console.error("Error parseando WKB:", e);
     return null;
   }
 }
 
-// Icono personalizado
+// Función para obtener servicios cercanos desde Overpass API
+async function fetchNearbyServices(
+  lat: number,
+  lng: number,
+  radiusKm: number = 5
+): Promise<ServiceMarker[]> {
+  const radius = radiusKm * 1000; // Convertir a metros
+  
+  // Query de Overpass API
+  const query = `
+    [out:json][timeout:25];
+    (
+      node["amenity"="fire_station"](around:${radius},${lat},${lng});
+      node["amenity"="police"](around:${radius},${lat},${lng});
+      node["amenity"="animal_shelter"](around:${radius},${lat},${lng});
+      node["amenity"="veterinary"](around:${radius},${lat},${lng});
+    );
+    out body;
+  `;
+
+  try {
+    const response = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      body: query,
+    });
+
+    if (!response.ok) throw new Error("Error en Overpass API");
+
+    const data = await response.json();
+    const services: ServiceMarker[] = [];
+
+    data.elements?.forEach((element: any) => {
+      if (!element.lat || !element.lon) return;
+
+      let tipo: ServiceMarker["tipo"] | null = null;
+      
+      switch (element.tags?.amenity) {
+        case "fire_station":
+          tipo = "bomberos";
+          break;
+        case "police":
+          tipo = "policia";
+          break;
+        case "animal_shelter":
+          tipo = "refugio";
+          break;
+        case "veterinary":
+          tipo = "veterinaria";
+          break;
+      }
+
+      if (tipo) {
+        services.push({
+          id: `service-${element.id}`,
+          lat: element.lat,
+          lng: element.lon,
+          tipo,
+          nombre: element.tags?.name || `${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`,
+          direccion: element.tags?.["addr:street"],
+        });
+      }
+    });
+
+    return services;
+  } catch (error) {
+    console.error("Error obteniendo servicios cercanos:", error);
+    return [];
+  }
+}
+
+// Icono personalizado para reportes
 function CustomPin({ tipo }: { tipo: "perdida" | "encontrada" }) {
   const source = tipo === "perdida" ? patita_roja : patita_verde;
   return <Image source={source} style={{ width: 36, height: 36 }} />;
+}
+
+// Icono personalizado para servicios
+function ServicePin({ tipo }: { tipo: ServiceMarker["tipo"] }) {
+  let source;
+  switch (tipo) {
+    case "bomberos":
+      source = pin_bomberos;
+      break;
+    case "policia":
+      source = pin_policia;
+      break;
+    case "refugio":
+      source = pin_refugios;
+      break;
+    case "veterinaria":
+      source = pin_veterinarias;
+      break;
+  }
+  return <Image source={source} style={{ width: 32, height: 32 }} />;
 }
 
 export default function MapaListado({ height }: { height?: number }) {
@@ -61,6 +162,7 @@ export default function MapaListado({ height }: { height?: number }) {
 
   const [loading, setLoading] = useState(true);
   const [markers, setMarkers] = useState<ReportMarker[]>([]);
+  const [services, setServices] = useState<ServiceMarker[]>([]);
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -81,7 +183,16 @@ export default function MapaListado({ height }: { height?: number }) {
     loadUserLocation();
   }, []);
 
-  // Cargar marcadores
+  // Cargar servicios cercanos cuando tengamos la ubicación
+  useEffect(() => {
+    if (userLocation) {
+      fetchNearbyServices(userLocation.latitude, userLocation.longitude, 3)
+        .then(setServices)
+        .catch((err) => console.error("Error cargando servicios:", err));
+    }
+  }, [userLocation]);
+
+  // Cargar marcadores de reportes
   useEffect(() => {
     const load = async () => {
       try {
@@ -144,7 +255,7 @@ export default function MapaListado({ height }: { height?: number }) {
 
         setMarkers(items);
       } catch (e) {
-        console.error("❌ Error cargando marcadores:", e);
+        console.error("Error cargando marcadores:", e);
       } finally {
         setLoading(false);
       }
@@ -188,6 +299,7 @@ export default function MapaListado({ height }: { height?: number }) {
         showsUserLocation
         showsMyLocationButton
       >
+        {/* Marcadores de reportes */}
         {markers.map((m) => (
           <Marker
             key={m.id}
@@ -199,6 +311,19 @@ export default function MapaListado({ height }: { height?: number }) {
             <CustomPin tipo={m.tipo} />
           </Marker>
         ))}
+
+        {/* Marcadores de servicios */}
+        {services.map((s) => (
+          <Marker
+            key={s.id}
+            coordinate={{ latitude: s.lat, longitude: s.lng }}
+            title={s.nombre}
+            description={s.direccion}
+            anchor={{ x: 0.5, y: 1 }}
+          >
+            <ServicePin tipo={s.tipo} />
+          </Marker>
+        ))}
       </MapView>
 
       {loading && (
@@ -208,7 +333,9 @@ export default function MapaListado({ height }: { height?: number }) {
       )}
 
       <View style={styles.markerCount}>
-        <Text style={styles.markerCountText}>{markers.length} reportes</Text>
+        <Text style={styles.markerCountText}>
+          {markers.length} reportes • {services.length} servicios
+        </Text>
       </View>
     </View>
   );
@@ -238,4 +365,3 @@ const styles = StyleSheet.create({
     color: "#333",
   },
 });
-

@@ -110,6 +110,16 @@ export default function TabLayout() {
             <CustomTabIcon focused={focused} iconName="inicio" size={28} />
           ),
         }}
+      />      
+      {/* Pestaña de Telefonos útiles */}
+      <Tabs.Screen
+        name="telefonos-utiles"
+        options={{
+          title: "Telefonos útiles",
+          tabBarIcon: ({ focused }) => (
+            <CustomTabIcon focused={focused} iconName="telefono_utiles" size={28} />
+          ),
+        }}
       />
     </Tabs>
   );
