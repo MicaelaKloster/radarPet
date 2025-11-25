@@ -13,7 +13,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Text,
 } from "react-native";
+import { useTheme } from '@/contexts/ThemeContext';
 
 type Mascota = {
   id: string;
@@ -41,6 +43,7 @@ export default function MisMascotas({
   userId,
   recargarMascotas,
 }: Props) {
+  const { isDark } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [modalEditVisible, setModalEditVisible] = useState(false);
   const [mascotaEditando, setMascotaEditando] = useState<Mascota | null>(null);
@@ -479,9 +482,9 @@ export default function MisMascotas({
 
   return (
     <View style={styles.seccion}>
-      <ThemedText type="subtitle" style={styles.tituloSeccion}>
+      <Text style={styles.tituloSeccion}>
         Mis Mascotas Registradas
-      </ThemedText>
+      </Text>
 
       {mascotas.length === 0 ? (
         <View style={styles.estadoVacio}>
@@ -586,7 +589,7 @@ export default function MisMascotas({
 
 const styles = StyleSheet.create({
   seccion: { marginTop: 25 },
-  tituloSeccion: { marginBottom: 15, fontSize: 20, fontWeight: "bold" },
+  tituloSeccion: { marginBottom: 15, fontSize: 20, fontWeight: "bold", color: '#fff' },
   estadoVacio: {
     alignItems: "center",
     padding: 40,

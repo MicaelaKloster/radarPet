@@ -2,9 +2,11 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { supabase } from '@/lib/supabase';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Switch, View } from 'react-native';
+import { StyleSheet, Switch, View, Text } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function PrivacySettings() {
+  const { isDark } = useTheme();
   const [mostrarCorreo, setMostrarCorreo] = useState(false);
 
   useEffect(() => {
@@ -47,9 +49,9 @@ export default function PrivacySettings() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="subtitle">Correo</ThemedText>
+      <Text style={{ fontSize: 20, fontWeight: 'bold', color: isDark ? '#fff' : '#000' }}>Correo</Text>
       <View style={styles.row}>
-        <ThemedText>Mostrar correo en perfil</ThemedText>
+        <Text style={{ color: isDark ? '#fff' : '#000' }}>Mostrar correo en perfil</Text>
         <Switch value={mostrarCorreo} onValueChange={handleToggle} />
       </View>
     </ThemedView>
