@@ -166,10 +166,10 @@ function getIconSource(tipo: ServiceContact['tipo']) {
 // Obtener color por tipo
 function getTypeColor(tipo: ServiceContact['tipo']): string {
   const colors = {
-    bomberos: '#EF4444',
-    policia: '#3B82F6',
-    refugio: '#8B5CF6',
-    veterinaria: '#10B981',
+    bomberos: '#ffde59',
+    policia: '#045279',
+    refugio: '#ff751f',
+    veterinaria: '#79cb43',
   };
   return colors[tipo];
 }

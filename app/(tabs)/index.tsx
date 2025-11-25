@@ -34,11 +34,11 @@ export default function MapScreen() {
   }, []);
 
   const navigateToLostPets = () => {
-    router.push("/(tabs)/reportes-perdidas");
+    router.push("../reportes/reportes-perdidas");
   };
 
   const navigateToFoundPets = () => {
-    router.push("/(tabs)/reporte-encontradas");
+    router.push("../reportes/reporte-encontradas");
   };
 
   return (

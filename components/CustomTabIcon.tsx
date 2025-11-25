@@ -3,30 +3,30 @@ import { Image, StyleSheet } from 'react-native';
 
 interface CustomTabIconProps {
   focused: boolean;
-  iconName: 'inicio' | 'mapa' | 'patita' | 'perfil' | 'telefono_utiles';
+  iconName: 'inicio' | 'mapa' | 'telefono_utiles' | 'perfil';
   size?: number;
 }
 
 const iconMap = {
   inicio: {
-    active: require('@/Iconos/IconoInicio.png'),
-    inactive: require('@/Iconos/IconoInicio_Gris.png'),
+    active: require('@/Iconos/IconoInicioFinal.png'),
+    inactive: require('@/Iconos/IconoInicioFinal_Gris.png'),
   },
   mapa: {
-    active: require('@/Iconos/IconoMapa.png'),
-    inactive: require('@/Iconos/IconoMapa_Gris.png'),
+    active: require('@/Iconos/IconoLupa.png'),
+    inactive: require('@/Iconos/IconoLupa_Gris.png'),
   },
-  patita: {
-    active: require('@/Iconos/IconoPatita.png'),
-    inactive: require('@/Iconos/IconoPatita_Gris.png'),
+  // patita: {
+  //   active: require('@/Iconos/IconoPatita.png'),
+  //   inactive: require('@/Iconos/IconoPatita_Gris.png'),
+  // },
+  telefono_utiles: {
+    active: require('@/Iconos/IconoTelefono.png'),
+    inactive: require('@/Iconos/IconoTelefono_Gris.png'),
   },
   perfil: {
     active: require('@/Iconos/IconoPerfil.png'),
     inactive: require('@/Iconos/IconoPerfil_Gris.png'),
-  },
-  telefono_utiles: {
-    active: require('@/Iconos/IconoTelefono.png'),
-    inactive: require('@/Iconos/IconoTelefono_Gris.png'),
   }
 };
 
