@@ -1,11 +1,19 @@
-import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { useTheme } from "@/contexts/ThemeContext";
+import { router } from "expo-router";
 import React from "react";
-import { Linking, StyleSheet, TouchableOpacity, Text } from "react-native";
-import { useTheme } from '@/contexts/ThemeContext';
+import {
+  Image,
+  Linking,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 
 export default function SupportSettings() {
   const { isDark } = useTheme();
+
   const handleEmailPress = () => {
     const email = "radarpet.soporte@gmail.com";
     const subject = "Soporte RadarPet";
@@ -19,12 +27,23 @@ export default function SupportSettings() {
 
   return (
     <ThemedView style={styles.container}>
-      <Text style={{ fontSize: 20, fontWeight: 'bold', color: isDark ? '#fff' : '#000' }}>Ayuda y Soporte</Text>
-      <Text style={{ marginTop: 20, color: isDark ? '#fff' : '#000' }}>
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <Image
+          source={require("../../assets/flecha-izquierda.png")}
+          style={[styles.backIcon, { tintColor: isDark ? "#fff" : "#000" }]}
+        />
+      </TouchableOpacity>
+
+      <Text style={[styles.title, { color: isDark ? "#fff" : "#000" }]}>
+        Ayuda y Soporte
+      </Text>
+
+      <Text style={[styles.description, { color: isDark ? "#fff" : "#000" }]}>
         ¿Necesitas ayuda? Escríbenos a:
       </Text>
+
       <TouchableOpacity onPress={handleEmailPress}>
-        <Text style={{ fontWeight: "bold", marginTop: 10, color: isDark ? '#fff' : '#000' }}>
+        <Text style={[styles.email, { color: isDark ? "#fff" : "#000" }]}>
           radarpet.soporte@gmail.com
         </Text>
       </TouchableOpacity>
@@ -33,5 +52,32 @@ export default function SupportSettings() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24 },
+  container: {
+    flex: 1,
+    padding: 24,
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
+  },
+  backButton: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 60 : 40,
+    left: 24,
+    zIndex: 10,
+    padding: 6,
+  },
+  backIcon: {
+    width: 24,
+    height: 24,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginTop: 60,
+  },
+  description: {
+    marginTop: 20,
+  },
+  email: {
+    fontWeight: "bold",
+    marginTop: 10,
+  },
 });

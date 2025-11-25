@@ -206,7 +206,7 @@ export default function ReportesPerdidasScreen() {
     cargarMascotasUsuario();
   }, []);
 
-  // Función para autocompletar con mascota seleccionada:
+  // Función para seleccionar mascota registrada
   const seleccionarMascota = (mascotaId: string) => {
     const mascota = mascotasRegistradas.find((m) => m.id === mascotaId);
     if (!mascota) return;
@@ -232,7 +232,10 @@ export default function ReportesPerdidasScreen() {
         uri: mascota.foto_principal_url,
         width: 800,
         height: 800,
-      });
+        isExistingStorageUrl: true,
+      } as any);
+    } else {
+      setFoto(null);
     }
   };
 
@@ -389,48 +392,75 @@ export default function ReportesPerdidasScreen() {
     }
   };
 
-  // 13. Función corregida para subir la foto
+  // 13. Función para subir foto si existe
   const subirFotoSiExiste = async (reporteId: string): Promise<boolean> => {
-    if (!foto) return true; // No hay foto para subir, pero no es un error
+    if (!foto) return true;
 
     try {
       setLoading((prev) => ({ ...prev, subiendoFoto: true }));
+
+      if (
+        (foto as any).isExistingStorageUrl &&
+        foto.uri.includes("supabase.co/storage")
+      ) {
+        console.log(
+          "[Reportes Perdidas] Reutilizando foto existente de Storage"
+        );
+
+        const urlParts = foto.uri.split("/reportes-fotos/");
+        if (urlParts.length === 2) {
+          const rutaStorage = urlParts[1];
+
+          console.log(
+            "[Reportes Perdidas] Usando ruta existente:",
+            rutaStorage
+          );
+
+          const { error: dbError } = await supabase
+            .from("fotos_reportes")
+            .insert({
+              reporte_id: reporteId,
+              ruta_storage: rutaStorage,
+              ancho: foto.width,
+              alto: foto.height,
+              estado: "AC",
+            });
+
+          if (dbError) throw dbError;
+
+          console.log(
+            "[Reportes Perdidas] Foto existente vinculada al reporte"
+          );
+          return true;
+        }
+
+        console.warn(
+          "[Reportes Perdidas] No se pudo extraer ruta, subiendo copia"
+        );
+      }
 
       const BUCKET = "reportes-fotos";
       const extRaw = (foto.uri.split(".").pop() || "").toLowerCase();
       const ext = (extRaw || "jpg").replace("jpeg", "jpg");
       const path = `reportes/${reporteId}/${Date.now()}.${ext}`;
-      console.log("[Reportes Perdidas] preparar subida:", {
-        reporteId,
-        extRaw,
-        ext,
-        path,
-        plataforma: Platform.OS,
-      });
+
+      console.log("[Reportes Perdidas] Subiendo foto nueva:", path);
 
       if (Platform.OS === "web") {
-        // En web leer como Blob y subir directamente
-        console.log("[Reportes Perdidas] leyendo blob desde uri...");
         const resp = await fetch(foto.uri);
         if (!resp.ok) throw new Error("No se pudo leer la imagen");
         const blob = await resp.blob();
         const contentType =
           blob.type || `image/${ext === "jpg" ? "jpeg" : ext}`;
-        console.log("[Reportes Perdidas] subiendo a storage (web)...", {
-          contentType,
-          size: blob.size,
-        });
         const { error: uploadError } = await supabase.storage
           .from(BUCKET)
           .upload(path, blob, { contentType, upsert: true });
         if (uploadError) throw uploadError;
       } else {
-        console.log("[Reportes Perdidas] leyendo base64 (nativo)...");
         const base64 = await FileSystem.readAsStringAsync(foto.uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
         const arrayBuffer = base64ToArrayBuffer(base64);
-        console.log("[Reportes Perdidas] subiendo a storage (nativo)...");
         const { error: uploadError } = await supabase.storage
           .from(BUCKET)
           .upload(path, arrayBuffer, {
@@ -440,8 +470,6 @@ export default function ReportesPerdidasScreen() {
         if (uploadError) throw uploadError;
       }
 
-      // Registrar en DB y loguear URL pública
-      console.log("[Reportes Perdidas] insert en fotos_reportes...");
       const { error: dbError } = await supabase.from("fotos_reportes").insert({
         reporte_id: reporteId,
         ruta_storage: path,
@@ -452,14 +480,10 @@ export default function ReportesPerdidasScreen() {
       if (dbError) throw dbError;
 
       const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-      console.log(
-        "[Reportes Perdidas] Foto subida en:",
-        path,
-        "URL:",
-        pub?.publicUrl
-      );
+      console.log("[Reportes Perdidas] Foto nueva subida:", pub?.publicUrl);
       return true;
     } catch (error) {
+      console.error("[Reportes Perdidas] Error al subir foto:", error);
       handleError(error, "subir la foto");
       return false;
     } finally {
@@ -705,6 +729,7 @@ export default function ReportesPerdidasScreen() {
       });
       setFoto(null);
       setUbicacionActual(null);
+      setMascotaSeleccionada(null);
     } catch (e) {
       handleError(e, "publicar el reporte");
     } finally {
@@ -745,11 +770,11 @@ export default function ReportesPerdidasScreen() {
       </ThemedView>
 
       {mascotasRegistradas.length > 0 && (
-        <View style={styles.formSection}>
+        <View style={[styles.formSection, { paddingHorizontal: 20 }]}>
           <Text
             style={[styles.sectionTitle, { color: isDark ? "#fff" : "#333" }]}
           >
-            ¿Es una de tus mascotas registradas?
+            ¿Tu mascota está registrada?
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <TouchableOpacity
@@ -759,7 +784,21 @@ export default function ReportesPerdidasScreen() {
               ]}
               onPress={() => {
                 setMascotaSeleccionada(null);
-                // Reset form si quieres
+                setFormData((prev) => ({
+                  nombre: "",
+                  especieId: null,
+                  raza: "",
+                  tamanioId: null,
+                  sexoId: null,
+                  color: "",
+                  seniasParticulares: "",
+                  ultimaUbicacion: prev.ultimaUbicacion,
+                  fechaHoraPerdida: prev.fechaHoraPerdida,
+                  descripcionUbicacion: prev.descripcionUbicacion,
+                  ubicacion: prev.ubicacion,
+                  recompensa: prev.recompensa,
+                }));
+                setFoto(null);
               }}
             >
               <IconSymbol size={30} name="plus.circle.fill" color="#4ECDC4" />

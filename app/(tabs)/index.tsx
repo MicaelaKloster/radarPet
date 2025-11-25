@@ -1,13 +1,19 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Platform, StyleSheet, TouchableOpacity, View, Text } from "react-native";
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import MapaListado from "@/components/MapaListado";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
-import { suscribirseAReportes } from '@/lib/subscriptions';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from "@/contexts/ThemeContext";
+import { suscribirseAReportes } from "@/lib/subscriptions";
 
 export default function MapScreen() {
   const router = useRouter();
@@ -16,14 +22,14 @@ export default function MapScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setRefreshKey(prev => prev + 1);
+      setRefreshKey((prev) => prev + 1);
     }, [])
   );
 
   useEffect(() => {
     const channel = suscribirseAReportes();
     return () => {
-      channel.then(ch => ch.unsubscribe());
+      channel.then((ch) => ch.unsubscribe());
     };
   }, []);
 
@@ -38,10 +44,10 @@ export default function MapScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
-        <Text style={[styles.title, { color: isDark ? '#fff' : '#333' }]}>
+        <Text style={[styles.title, { color: isDark ? "#fff" : "#333" }]}>
           RadarPet
         </Text>
-        <Text style={[styles.subtitle, { color: isDark ? '#fff' : '#6B7280' }]}>
+        <Text style={[styles.subtitle, { color: isDark ? "#fff" : "#6B7280" }]}>
           Encuentra a tu mascota perdida
         </Text>
         <TouchableOpacity
@@ -57,7 +63,12 @@ export default function MapScreen() {
       </View>
 
       <ThemedView style={styles.quickActions}>
-        <Text style={[styles.quickActionsTitle, { color: isDark ? '#fff' : '#1E293B' }]}>
+        <Text
+          style={[
+            styles.quickActionsTitle,
+            { color: isDark ? "#fff" : "#1E293B" },
+          ]}
+        >
           Acciones Rápidas
         </Text>
 

@@ -1,6 +1,10 @@
 import { ThemedText } from "@/components/ThemedText";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/lib/supabase";
+import { decode as base64ToArrayBuffer } from "base64-arraybuffer";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
 import {
@@ -8,14 +12,14 @@ import {
   Alert,
   Image,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
   View,
-  Text,
 } from "react-native";
-import { useTheme } from '@/contexts/ThemeContext';
 
 type Mascota = {
   id: string;
@@ -51,15 +55,14 @@ export default function MisMascotas({
   const [editando, setEditando] = useState(false);
   const [eliminando, setEliminando] = useState<string | null>(null);
   const [cargandoCatalogos, setCargandoCatalogos] = useState(true);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
 
-  // Catálogos
   const [catalogos, setCatalogos] = useState({
     especies: [] as Catalogo[],
     tamanios: [] as Catalogo[],
     sexos: [] as Catalogo[],
   });
 
-  // Datos del formulario
   const [formData, setFormData] = useState({
     nombre: "",
     especieId: null as number | null,
@@ -70,9 +73,8 @@ export default function MisMascotas({
     seniasParticulares: "",
   });
 
-  const [foto, setFoto] = useState<string | null>(null);
+  const [foto, setFoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
 
-  // Cargar catálogos al montar el componente
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
@@ -132,18 +134,90 @@ export default function MisMascotas({
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: "images" as any,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setFoto(result.assets[0].uri);
+        const asset = result.assets[0];
+
+        const manipResult = await ImageManipulator.manipulateAsync(
+          asset.uri,
+          [{ resize: { width: 800 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+        );
+
+        setFoto({
+          ...asset,
+          uri: manipResult.uri,
+          width: manipResult.width,
+          height: manipResult.height,
+        });
       }
     } catch (error) {
       console.error("Error seleccionando foto:", error);
       Alert.alert("Error", "No se pudo cargar la imagen");
+    }
+  };
+
+  const subirFotoAStorage = async (
+    mascotaId: string
+  ): Promise<string | null> => {
+    if (!foto) return null;
+
+    try {
+      setSubiendoFoto(true);
+      const BUCKET = "reportes-fotos";
+      const ext = "jpg";
+      const path = `mascotas/${mascotaId}/${Date.now()}.${ext}`;
+
+      console.log("[MisMascotas] Subiendo foto a Storage:", path);
+
+      if (Platform.OS === "web") {
+        const resp = await fetch(foto.uri);
+        if (!resp.ok) throw new Error("No se pudo leer la imagen");
+        const blob = await resp.blob();
+        const { error: uploadError } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, blob, {
+            contentType: "image/jpeg",
+            upsert: true,
+          });
+        if (uploadError) throw uploadError;
+      } else {
+        const base64 = await FileSystem.readAsStringAsync(foto.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const arrayBuffer = base64ToArrayBuffer(base64);
+        const { error: uploadError } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, arrayBuffer, {
+            contentType: "image/jpeg",
+            upsert: true,
+          });
+        if (uploadError) throw uploadError;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from(BUCKET)
+        .getPublicUrl(path);
+
+      console.log(
+        "[MisMascotas] Foto subida exitosamente:",
+        publicUrlData.publicUrl
+      );
+      return publicUrlData.publicUrl;
+    } catch (error) {
+      console.error("[MisMascotas] Error subiendo foto:", error);
+      Alert.alert(
+        "Advertencia",
+        "No se pudo subir la foto, pero la mascota se guardó"
+      );
+      return null;
+    } finally {
+      setSubiendoFoto(false);
     }
   };
 
@@ -175,15 +249,28 @@ export default function MisMascotas({
             sexo_id: formData.sexoId,
             color: formData.color.trim() || null,
             senias_particulares: formData.seniasParticulares.trim() || null,
-            foto_principal_url: foto || null,
+            foto_principal_url: null,
           },
         ])
-        .select();
+        .select()
+        .single();
 
       if (error) {
         console.error("Error agregando mascota:", error);
         Alert.alert("Error", "No se pudo agregar la mascota");
         return;
+      }
+
+      let fotoUrl = null;
+      if (foto && data?.id) {
+        fotoUrl = await subirFotoAStorage(data.id);
+
+        if (fotoUrl) {
+          await supabase
+            .from("mascotas")
+            .update({ foto_principal_url: fotoUrl })
+            .eq("id", data.id);
+        }
       }
 
       await recargarMascotas();
@@ -209,7 +296,18 @@ export default function MisMascotas({
       color: mascota.color || "",
       seniasParticulares: mascota.seniasParticulares || "",
     });
-    setFoto(mascota.fotoPrincipalUrl);
+
+    if (mascota.fotoPrincipalUrl) {
+      setFoto({
+        uri: mascota.fotoPrincipalUrl,
+        width: 800,
+        height: 800,
+        isExisting: true,
+      } as any);
+    } else {
+      setFoto(null);
+    }
+
     setModalEditVisible(true);
   };
 
@@ -231,6 +329,12 @@ export default function MisMascotas({
     setEditando(true);
 
     try {
+      let fotoUrl = mascotaEditando.fotoPrincipalUrl;
+
+      if (foto && !(foto as any).isExisting) {
+        fotoUrl = await subirFotoAStorage(mascotaEditando.id);
+      }
+
       const { error } = await supabase
         .from("mascotas")
         .update({
@@ -241,7 +345,7 @@ export default function MisMascotas({
           sexo_id: formData.sexoId,
           color: formData.color.trim() || null,
           senias_particulares: formData.seniasParticulares.trim() || null,
-          foto_principal_url: foto || null,
+          foto_principal_url: fotoUrl,
         })
         .eq("id", mascotaEditando.id);
 
@@ -317,10 +421,10 @@ export default function MisMascotas({
         <TouchableOpacity
           style={styles.fotoContainer}
           onPress={elegirFoto}
-          disabled={agregando || editando}
+          disabled={agregando || editando || subiendoFoto}
         >
           {foto ? (
-            <Image source={{ uri: foto }} style={styles.fotoPreview} />
+            <Image source={{ uri: foto.uri }} style={styles.fotoPreview} />
           ) : (
             <View style={styles.fotoPlaceholder}>
               <IconSymbol size={40} name="camera.fill" color="#999" />
@@ -328,6 +432,15 @@ export default function MisMascotas({
             </View>
           )}
         </TouchableOpacity>
+
+        {subiendoFoto && (
+          <View style={styles.uploadingIndicator}>
+            <ActivityIndicator size="small" color="#4ECDC4" />
+            <ThemedText style={styles.uploadingText}>
+              Subiendo foto...
+            </ThemedText>
+          </View>
+        )}
 
         {/* Nombre */}
         <ThemedText style={styles.label}>Nombre *</ThemedText>
@@ -448,10 +561,10 @@ export default function MisMascotas({
         <TouchableOpacity
           style={[
             styles.botonAgregar,
-            (agregando || editando) && { opacity: 0.5 },
+            (agregando || editando || subiendoFoto) && { opacity: 0.5 },
           ]}
           onPress={esEdicion ? editarMascota : agregarMascota}
-          disabled={agregando || editando}
+          disabled={agregando || editando || subiendoFoto}
         >
           <ThemedText style={styles.textoBotonAgregar}>
             {agregando || editando
@@ -472,7 +585,7 @@ export default function MisMascotas({
             }
             resetForm();
           }}
-          disabled={agregando || editando}
+          disabled={agregando || editando || subiendoFoto}
         >
           <ThemedText style={styles.textoCancelar}>Cancelar</ThemedText>
         </TouchableOpacity>
@@ -482,7 +595,7 @@ export default function MisMascotas({
 
   return (
     <View style={styles.seccion}>
-      <Text style={styles.tituloSeccion}>
+      <Text style={[styles.tituloSeccion, { color: isDark ? "#fff" : "#333" }]}>
         Mis Mascotas Registradas
       </Text>
 
@@ -532,7 +645,7 @@ export default function MisMascotas({
                 >
                   <Image
                     source={require("../../assets/editar.png")}
-                    style={styles.accionIcono}
+                    style={[styles.accionIcono, { tintColor: "#2CBDAA" }]}
                   />
                 </TouchableOpacity>
 
@@ -589,7 +702,11 @@ export default function MisMascotas({
 
 const styles = StyleSheet.create({
   seccion: { marginTop: 25 },
-  tituloSeccion: { marginBottom: 15, fontSize: 20, fontWeight: "bold", color: '#fff' },
+  tituloSeccion: {
+    marginBottom: 15,
+    fontSize: 20,
+    fontWeight: "bold",
+  },
   estadoVacio: {
     alignItems: "center",
     padding: 40,
@@ -635,15 +752,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   botonAccion: {
-    padding: 8,
+    padding: 2,
   },
   accionIcono: {
-    width: 22,
-    height: 22,
+    width: 16,
+    height: 16,
     tintColor: "#333",
   },
   botonAgregar: {
-    backgroundColor: "#2E86AB",
+    backgroundColor: "#2CBDAA",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -666,7 +783,8 @@ const styles = StyleSheet.create({
   },
   textoCancelar: {
     color: "#FF6B6B",
-    marginTop: 10,
+    marginTop: 20,
+    marginBottom: 10,
     textAlign: "center",
   },
   loadingContainer: {
@@ -695,8 +813,20 @@ const styles = StyleSheet.create({
   },
   fotoText: {
     fontSize: 12,
-    marginTop: 5,
+    marginBottom: 40,
     opacity: 0.6,
+    textAlign: "center",
+  },
+  uploadingIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  uploadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#666",
   },
   label: {
     fontSize: 14,
@@ -727,8 +857,8 @@ const styles = StyleSheet.create({
     borderColor: "#E9ECEF",
   },
   chipSelected: {
-    backgroundColor: "#2E86AB",
-    borderColor: "#2E86AB",
+    backgroundColor: "#2CBDAA",
+    borderColor: "#2CBDAA",
   },
   chipText: {
     fontSize: 14,
