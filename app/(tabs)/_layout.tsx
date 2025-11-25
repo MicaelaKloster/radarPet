@@ -56,6 +56,40 @@ export default function TabLayout() {
         }),
       }}
     >
+
+      {/* Pestaña de Mascotas Perdidas */}
+      {/* <Tabs.Screen
+        name="reportes-perdidas"
+        options={{
+          title: "Perdida",
+          tabBarIcon: ({ focused }) => (
+            <CustomTabIcon focused={focused} iconName="patita" size={28} />
+          ),
+        }}
+      /> */}
+
+      {/* Pestaña de Mascotas Encontradas */}
+      {/* <Tabs.Screen
+        name="reporte-encontradas"
+        options={{
+          title: "Encontrada",
+          tabBarIcon: ({ focused }) => (
+            <CustomTabIcon focused={focused} iconName="patita" size={28} />
+          ),
+        }}
+      /> */}
+
+      {/* Pestaña de Explorar */}
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: "Explorar",
+          tabBarIcon: ({ focused }) => (
+            <CustomTabIcon focused={focused} iconName="inicio" size={28} />
+          ),
+        }}
+      />
+
       {/* Pestaña del Mapa */}
       <Tabs.Screen
         name="index" // Nombre de la ruta
@@ -68,49 +102,6 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Pestaña de Mascotas Perdidas */}
-      <Tabs.Screen
-        name="reportes-perdidas"
-        options={{
-          title: "Perdida",
-          tabBarIcon: ({ focused }) => (
-            <CustomTabIcon focused={focused} iconName="patita" size={28} />
-          ),
-        }}
-      />
-
-      {/* Pestaña de Mascotas Encontradas */}
-      <Tabs.Screen
-        name="reporte-encontradas"
-        options={{
-          title: "Encontrada",
-          tabBarIcon: ({ focused }) => (
-            <CustomTabIcon focused={focused} iconName="patita" size={28} />
-          ),
-        }}
-      />
-
-      {/* Pestaña de Perfil de Usuario */}
-      <Tabs.Screen
-        name="perfil"
-        options={{
-          title: "Perfil",
-          tabBarIcon: ({ focused }) => (
-            <CustomTabIcon focused={focused} iconName="perfil" size={28} />
-          ),
-        }}
-      />
-
-      {/* Pestaña de Explorar */}
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: "Explorar",
-          tabBarIcon: ({ focused }) => (
-            <CustomTabIcon focused={focused} iconName="inicio" size={28} />
-          ),
-        }}
-      />
       {/* Pestaña de Telefonos útiles */}
       <Tabs.Screen
         name="telefonos-utiles"
@@ -122,6 +113,17 @@ export default function TabLayout() {
               iconName="telefono_utiles"
               size={28}
             />
+          ),
+        }}
+      />
+
+      {/* Pestaña de Perfil de Usuario */}
+      <Tabs.Screen
+        name="perfil"
+        options={{
+          title: "Perfil",
+          tabBarIcon: ({ focused }) => (
+            <CustomTabIcon focused={focused} iconName="perfil" size={28} />
           ),
         }}
       />

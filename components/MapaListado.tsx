@@ -186,7 +186,7 @@ export default function MapaListado({ height }: { height?: number }) {
   // Cargar servicios cercanos cuando tengamos la ubicación
   useEffect(() => {
     if (userLocation) {
-      fetchNearbyServices(userLocation.latitude, userLocation.longitude, 3)
+      fetchNearbyServices(userLocation.latitude, userLocation.longitude, 5)
         .then(setServices)
         .catch((err) => console.error("Error cargando servicios:", err));
     }
