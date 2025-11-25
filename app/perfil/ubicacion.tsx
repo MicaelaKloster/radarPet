@@ -2,9 +2,11 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
-import { Alert, Linking, Platform, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Linking, Platform, StyleSheet, Switch, View, Text } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function LocationSettings() {
+  const { isDark } = useTheme();
   const [compartirUbicacion, setCompartirUbicacion] = useState(true);
   const [ubicacionPrecisa, setUbicacionPrecisa] = useState(true);
 
@@ -39,13 +41,13 @@ export default function LocationSettings() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="subtitle">Ubicación</ThemedText>
+      <Text style={{ fontSize: 20, fontWeight: 'bold', color: isDark ? '#fff' : '#000' }}>Ubicación</Text>
       <View style={styles.row}>
-        <ThemedText>Compartir mi ubicación</ThemedText>
+        <Text style={{ color: isDark ? '#fff' : '#000' }}>Compartir mi ubicación</Text>
         <Switch value={compartirUbicacion} onValueChange={setCompartirUbicacion} />
       </View>
       <View style={styles.row}>
-        <ThemedText>Usar ubicación precisa</ThemedText>
+        <Text style={{ color: isDark ? '#fff' : '#000' }}>Usar ubicación precisa</Text>
         <Switch value={ubicacionPrecisa} onValueChange={handleUbicacionPrecisa} />
       </View>
     </ThemedView>

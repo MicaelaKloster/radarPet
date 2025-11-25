@@ -23,6 +23,11 @@ type Mascota = {
   nombre: string;
   fotoPrincipalUrl: string | null;
   especieId: number | null;
+  raza: string | null;
+  tamanioId: number | null;
+  sexoId: number | null;
+  color: string | null;
+  seniasParticulares: string | null;
 };
 
 export default function ProfileScreen() {
@@ -54,16 +59,16 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { isDark, toggleTheme } = useTheme();
 
-  // En ProfileScreen, modifica la función recargarMascotas:
-
   const recargarMascotas = async (uid?: string) => {
-    const id = uid || userId; // ✅ Ahora usa userId del estado si no se pasa uid
+    const id = uid || userId;
     if (!id) return;
 
     try {
       const { data, error } = await supabase
         .from("mascotas")
-        .select("id, nombre, foto_principal_url, especie_id")
+        .select(
+          "id, nombre, foto_principal_url, especie_id, raza, tamanio_id, sexo_id, color, senias_particulares"
+        )
         .eq("estado", "AC")
         .eq("duenio_id", id);
 
@@ -75,6 +80,11 @@ export default function ProfileScreen() {
           nombre: m.nombre,
           fotoPrincipalUrl: m.foto_principal_url,
           especieId: m.especie_id,
+          raza: m.raza,
+          tamanioId: m.tamanio_id,
+          sexoId: m.sexo_id,
+          color: m.color,
+          seniasParticulares: m.senias_particulares,
         }))
       );
     } catch (error) {
@@ -295,7 +305,7 @@ export default function ProfileScreen() {
         await Promise.all([
           loadCounts(user.id),
           loadActivity(user.id),
-          recargarMascotas(user.id), // ✅ ahora tiene el user.id
+          recargarMascotas(user.id),
         ]);
       } else {
         setStats({ perdidas: 0, encontradas: 0, reuniones: 0, loading: false });
@@ -395,9 +405,9 @@ export default function ProfileScreen() {
         )}
 
         <View style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
             Historial de Actividad
-          </ThemedText>
+          </Text>
           {activity.loading ? (
             <View style={styles.emptyState}>
               <ActivityIndicator size="small" />
@@ -463,9 +473,9 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
+        <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
           Configuración
-        </ThemedText>
+        </Text>
 
         <View style={styles.menuItem}>
           <TouchableOpacity
