@@ -20,7 +20,9 @@ export type ReportMarker = {
 // ---------------------------
 // 🔥 Parser correcto: WKB HEX
 // ---------------------------
-function parseWKBPoint(wkb?: string | null): { lat: number; lng: number } | null {
+function parseWKBPoint(
+  wkb?: string | null
+): { lat: number; lng: number } | null {
   if (!wkb || wkb.length < 32) return null;
 
   try {
@@ -88,8 +90,16 @@ export default function MapaListado({ height }: { height?: number }) {
         setLoading(true);
 
         const [tipoPerdidaRes, tipoEncontradaRes] = await Promise.all([
-          supabase.from("tipos_reportes").select("id").eq("nombre", "perdida").maybeSingle(),
-          supabase.from("tipos_reportes").select("id").eq("nombre", "encontrada").maybeSingle(),
+          supabase
+            .from("tipos_reportes")
+            .select("id")
+            .eq("nombre", "perdida")
+            .maybeSingle(),
+          supabase
+            .from("tipos_reportes")
+            .select("id")
+            .eq("nombre", "encontrada")
+            .maybeSingle(),
         ]);
 
         const perdidaId = tipoPerdidaRes.data?.id;
@@ -154,12 +164,16 @@ export default function MapaListado({ height }: { height?: number }) {
 
     const channel = supabase
       .channel("reportes-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "reportes" }, () => {
-        load();
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "reportes" },
+        () => {
+          load();
+        }
+      )
       .subscribe();
 
-    return () => channel.unsubscribe();
+    return () => void channel.unsubscribe();
   }, []);
 
   const initialRegion = useMemo(() => {
@@ -192,7 +206,10 @@ export default function MapaListado({ height }: { height?: number }) {
           <Marker
             key={m.id}
             coordinate={{ latitude: m.lat, longitude: m.lng }}
-            title={m.titulo ?? (m.tipo === "perdida" ? "Mascota perdida" : "Mascota encontrada")}
+            title={
+              m.titulo ??
+              (m.tipo === "perdida" ? "Mascota perdida" : "Mascota encontrada")
+            }
             anchor={{ x: 0.5, y: 1 }}
             onCalloutPress={() => router.push("/explore")}
           >
@@ -238,4 +255,3 @@ const styles = StyleSheet.create({
     color: "#333",
   },
 });
-
