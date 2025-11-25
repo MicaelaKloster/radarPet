@@ -11,7 +11,7 @@ export function ThemedExploreText({
   ...rest
 }: ThemedExploreTextProps) {
   const { isDark } = useTheme();
-  const color = isDark ? '#fff' : '#11181C';
+  const color = isDark ? '#fff' : '#111827';
 
   return (
     <Text

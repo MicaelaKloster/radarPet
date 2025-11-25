@@ -6,12 +6,12 @@
     "orientation": "portrait",
     "icon": "./assets/images/splash.png",
     "scheme": "radarpet",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
 
     "ios": {
       "supportsTablet": true,
-      "userInterfaceStyle": "light",
+      "userInterfaceStyle": "automatic",
       "bundleIdentifier": "com.radarpet.app"
     },
 
@@ -21,7 +21,7 @@
         "backgroundColor": "#02aaad"
       },
       "edgeToEdgeEnabled": true,
-      "userInterfaceStyle": "light",
+      "userInterfaceStyle": "automatic",
       "package": "com.radarpet.app",
       "permissions": [
         "INTERNET",
@@ -47,6 +47,13 @@
           "imageWidth": 200,
           "resizeMode": "cover",
           "backgroundColor": "#02aaad"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permite a $(PRODUCT_NAME) acceder a tu ubicación para mostrar servicios cercanos y reportes de mascotas en tu área.",
+          "locationWhenInUsePermission": "Permite a $(PRODUCT_NAME) acceder a tu ubicación para mostrar servicios cercanos y reportes de mascotas en tu área."
         }
       ],
       "expo-font",
