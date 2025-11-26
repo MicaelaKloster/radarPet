@@ -66,19 +66,24 @@ export default function ProfileScreen() {
 
       if (error) throw error;
 
-      setMascotas(
-        (data || []).map((m) => ({
-          id: m.id,
-          nombre: m.nombre,
-          fotoPrincipalUrl: m.foto_principal_url,
-          especieId: m.especie_id,
-          raza: m.raza,
-          tamanioId: m.tamanio_id,
-          sexoId: m.sexo_id,
-          color: m.color,
-          seniasParticulares: m.senias_particulares,
-        }))
-      );
+      const nuevas = (data || []).map((m) => ({
+        id: m.id,
+        nombre: m.nombre,
+        fotoPrincipalUrl: m.foto_principal_url,
+        especieId: m.especie_id,
+        raza: m.raza,
+        tamanioId: m.tamanio_id,
+        sexoId: m.sexo_id,
+        color: m.color,
+        seniasParticulares: m.senias_particulares,
+      }));
+
+      setMascotas((prev) => {
+        const prevJson = JSON.stringify(prev);
+        const newJson = JSON.stringify(nuevas);
+        if (prevJson === newJson) return prev;
+        return nuevas;
+      });
     } catch (error) {
       console.error("Error recargando mascotas:", error);
     }

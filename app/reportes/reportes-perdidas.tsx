@@ -491,6 +491,55 @@ export default function ReportesPerdidasScreen() {
     }
   };
 
+  const subirFotoMascota = async (
+    mascotaId: string
+  ): Promise<string | null> => {
+    if (!foto) return null;
+
+    if ((foto as any).isExistingStorageUrl) {
+      return foto.uri;
+    }
+
+    try {
+      const BUCKET = "reportes-fotos";
+      const ext = "jpg";
+      const path = `mascotas/${mascotaId}/${Date.now()}.${ext}`;
+
+      console.log("[Subiendo foto de mascota a:", path);
+
+      if (Platform.OS === "web") {
+        const resp = await fetch(foto.uri);
+        if (!resp.ok) throw new Error("No se pudo leer la imagen");
+        const blob = await resp.blob();
+        const { error: uploadError } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+        if (uploadError) throw uploadError;
+      } else {
+        const base64 = await FileSystem.readAsStringAsync(foto.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const arrayBuffer = base64ToArrayBuffer(base64);
+        const { error: uploadError } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, arrayBuffer, {
+            contentType: "image/jpeg",
+            upsert: true,
+          });
+        if (uploadError) throw uploadError;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from(BUCKET)
+        .getPublicUrl(path);
+
+      return publicUrlData.publicUrl;
+    } catch (error) {
+      console.error("Error subiendo foto de mascota:", error);
+      return null;
+    }
+  };
+
   // 14. Validación de formulario (incluye foto obligatoria)
   const validar = (): string[] => {
     const errores: string[] = [];
@@ -555,7 +604,8 @@ export default function ReportesPerdidasScreen() {
         );
       } else {
         // Si no, crear una nueva mascota
-        console.log("[Reportes Perdidas] insertar nueva mascota");
+        console.log("insertar nueva mascota");
+
         const mascotaData = {
           duenio_id: user.id,
           nombre: formData.nombre.trim() || "Desconocido",
@@ -566,6 +616,7 @@ export default function ReportesPerdidasScreen() {
           color: formData.color.trim() || null,
           senias_particulares: formData.seniasParticulares.trim() || null,
           estado: "AC",
+          foto_principal_url: null,
         };
 
         const { data: nuevaMascota, error: mascotaError } = await withTimeout(
@@ -585,7 +636,18 @@ export default function ReportesPerdidasScreen() {
         }
 
         mascotaId = nuevaMascota.id;
-        console.log("[Reportes Perdidas] mascota creada:", mascotaId);
+        console.log("mascota creada:", mascotaId);
+
+        if (foto) {
+          const fotoUrl = await subirFotoMascota(mascotaId);
+          if (fotoUrl) {
+            await supabase
+              .from("mascotas")
+              .update({ foto_principal_url: fotoUrl })
+              .eq("id", mascotaId);
+            console.log("Foto de mascota guardada");
+          }
+        }
       }
 
       console.log("[Reportes Perdidas] catálogos");
