@@ -1,3 +1,4 @@
+import { useTheme } from "@/contexts/ThemeContext";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -5,12 +6,11 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
   View,
-  Text,
 } from "react-native";
-import { useTheme } from '@/contexts/ThemeContext';
 // Componentes personalizados de la aplicación
 import MiniMapaSelector, { Coord } from "@/components/MiniMapaSelector";
 import { ThemedText } from "@/components/ThemedText"; // Texto que se adapta al tema claro/oscuro
@@ -247,7 +247,7 @@ export default function ReportFoundScreen() {
       const sacarFoto = async () => {
         try {
           console.log("[Reporte Encontradas] Iniciando captura de foto...");
-      
+
           // 1. Permisos de cámara
           const { status } = await ImagePicker.requestCameraPermissionsAsync();
           if (status !== "granted") {
@@ -257,7 +257,7 @@ export default function ReportFoundScreen() {
             );
             return;
           }
-      
+
           // 2. Abrir cámara
           const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -265,12 +265,12 @@ export default function ReportFoundScreen() {
             aspect: [4, 3],
             quality: 0.8,
           });
-      
+
           if (result.canceled || !result.assets || result.assets.length === 0) {
             console.log("[Reporte Encontradas] Captura cancelada");
             return;
           }
-      
+
           const image = result.assets[0];
           console.log("[Reporte Encontradas] Foto capturada:", {
             uri: image.uri,
@@ -278,20 +278,20 @@ export default function ReportFoundScreen() {
             height: image.height,
             type: image.type,
           });
-      
+
           // 3. Procesar igual que en elegirFoto
           const processedImage = await ImageManipulator.manipulateAsync(
             image.uri,
             [{ resize: { width: 1200 } }],
             { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
           );
-      
+
           setFoto({
             uri: processedImage.uri,
             width: processedImage.width,
             height: processedImage.height,
           });
-      
+
           console.log("[Reporte Encontradas] Foto lista para subir:", {
             uri: processedImage.uri,
             width: processedImage.width,
@@ -509,6 +509,39 @@ export default function ReportFoundScreen() {
           mascotaError?.message || "No se pudo registrar la mascota"
         );
       console.log("[Reporte Encontradas] mascota creada:", nuevaMascota.id);
+
+      let fotoPrincipalUrl = null;
+
+      if (foto) {
+        const BUCKET = "reportes-fotos";
+        const ext = "jpg";
+        const path = `mascotas/${nuevaMascota.id}/${Date.now()}.${ext}`;
+
+        if (Platform.OS === "web") {
+          const resp = await fetch(foto.uri);
+          const blob = await resp.blob();
+          await supabase.storage
+            .from(BUCKET)
+            .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+        } else {
+          const base64 = await FileSystem.readAsStringAsync(foto.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          const arrayBuffer = base64ToArrayBuffer(base64);
+          await supabase.storage.from(BUCKET).upload(path, arrayBuffer, {
+            contentType: "image/jpeg",
+            upsert: true,
+          });
+        }
+
+        const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+        fotoPrincipalUrl = pub.publicUrl;
+
+        await supabase
+          .from("mascotas")
+          .update({ foto_principal_url: fotoPrincipalUrl })
+          .eq("id", nuevaMascota.id);
+      }
 
       console.log("[Reporte Encontradas] catálogos");
       const [tipoRes, estadoRes] = await Promise.all([
@@ -728,12 +761,16 @@ export default function ReportFoundScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formSection}>
-          <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
+          <Text
+            style={[styles.sectionTitle, { color: isDark ? "#fff" : "#333" }]}
+          >
             Descripción
           </Text>
 
           <View style={styles.formField}>
-            <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
+            <Text
+              style={[styles.fieldLabel, { color: isDark ? "#fff" : "#000" }]}
+            >
               Nombre (si lo sabes)
             </Text>
             <TextInput
@@ -773,7 +810,11 @@ export default function ReportFoundScreen() {
           />
 
           <View style={styles.formField}>
-            <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>Color principal</Text>
+            <Text
+              style={[styles.fieldLabel, { color: isDark ? "#fff" : "#000" }]}
+            >
+              Color principal
+            </Text>
             <TextInput
               style={styles.textInput}
               placeholder="Ej: Marrón con blanco"
@@ -785,7 +826,9 @@ export default function ReportFoundScreen() {
           </View>
 
           <View style={styles.formField}>
-            <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
+            <Text
+              style={[styles.fieldLabel, { color: isDark ? "#fff" : "#000" }]}
+            >
               Señas particulares
             </Text>
             <TextInput
@@ -804,35 +847,44 @@ export default function ReportFoundScreen() {
         </View>
 
         <View style={styles.formSection}>
-          <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#333' }]}>
+          <Text
+            style={[styles.sectionTitle, { color: isDark ? "#fff" : "#333" }]}
+          >
             Ubicación y Fecha
           </Text>
 
           <View style={styles.formField}>
-            <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
+            <Text
+              style={[styles.fieldLabel, { color: isDark ? "#fff" : "#000" }]}
+            >
               Seleccioná la ubicación en el mapa
             </Text>
             <MiniMapaSelector
-  value={coordsForMap}
-  onChange={(c) =>
-    setFormData((p) => ({
-      ...p,
-      ultimaUbicacion: `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`,
-    }))
-  }
-  height={220}
-  initialCenter={
-    coordsForMap ??
-    (ubicacionActual
-      ? {
-          lat: ubicacionActual.latitude,
-          lng: ubicacionActual.longitude,
-        }
-      : undefined)
-  }
-/>
+              value={coordsForMap}
+              onChange={(c) =>
+                setFormData((p) => ({
+                  ...p,
+                  ultimaUbicacion: `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`,
+                }))
+              }
+              height={220}
+              initialCenter={
+                coordsForMap ??
+                (ubicacionActual
+                  ? {
+                      lat: ubicacionActual.latitude,
+                      lng: ubicacionActual.longitude,
+                    }
+                  : undefined)
+              }
+            />
 
-            <Text style={[styles.uploadingText, { color: isDark ? '#fff' : '#666' }]}>
+            <Text
+              style={[
+                styles.uploadingText,
+                { color: isDark ? "#fff" : "#666" },
+              ]}
+            >
               Tocá el mapa para establecer latitud y longitud.
             </Text>
             <TouchableOpacity
@@ -849,7 +901,9 @@ export default function ReportFoundScreen() {
           </View>
 
           <View style={styles.formField}>
-            <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
+            <Text
+              style={[styles.fieldLabel, { color: isDark ? "#fff" : "#000" }]}
+            >
               Descripción de la ubicación (opcional)
             </Text>
             <TextInput
@@ -867,7 +921,9 @@ export default function ReportFoundScreen() {
           </View>
 
           <View style={styles.formField}>
-            <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
+            <Text
+              style={[styles.fieldLabel, { color: isDark ? "#fff" : "#000" }]}
+            >
               Fecha/hora del hallazgo (opcional)
             </Text>
             <TextInput
@@ -1073,7 +1129,7 @@ function Selector({
   if (opciones.length === 0) {
     return (
       <View style={styles.formField}>
-        <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
+        <Text style={[styles.fieldLabel, { color: isDark ? "#fff" : "#000" }]}>
           {titulo} {obligatorio && "*"}
         </Text>
         <View style={styles.selectorEmpty}>
@@ -1086,7 +1142,7 @@ function Selector({
   }
   return (
     <View style={styles.formField}>
-      <Text style={[styles.fieldLabel, { color: isDark ? '#fff' : '#000' }]}>
+      <Text style={[styles.fieldLabel, { color: isDark ? "#fff" : "#000" }]}>
         {titulo} {obligatorio && "*"}
       </Text>
       <ScrollView
@@ -1240,8 +1296,12 @@ const styles = StyleSheet.create({
   },
   buttonContainer: { paddingVertical: 20, paddingBottom: 40 },
 
-  submitButton: { backgroundColor: '#4ECDC4', borderRadius: 12, padding: 18, alignItems: 'center' },
-  submitButtonDisabled: { backgroundColor: '#CCC', opacity: 0.6 },
+  submitButton: {
+    backgroundColor: "#4ECDC4",
+    borderRadius: 12,
+    padding: 18,
+    alignItems: "center",
+  },
+  submitButtonDisabled: { backgroundColor: "#CCC", opacity: 0.6 },
   submitButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
-
 });
