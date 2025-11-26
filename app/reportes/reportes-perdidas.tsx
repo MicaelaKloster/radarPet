@@ -1,3 +1,12 @@
+// Pantalla para crear un reporte de mascota perdida
+//  *
+//  *  Propósito
+//  *  ---------
+//*  • Permitir al usuario describir la mascota desaparecida (especie, rasgos, etc.).  
+//*  • Elegir una foto (obligatoria).
+//*  • Indicar la ubicación del último avistamiento.  
+//*  • Persistir la información en Supabase y subir la foto al bucket de Storage.  
+
 import MiniMapaSelector, { Coord } from "@/components/MiniMapaSelector";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -23,7 +32,9 @@ import {
   View,
 } from "react-native";
 
-// Helper para timeout de promesas (evita quedarse colgado sin feedback)
+/* ------------------------------------------------------------------
+   Helper: promesa con timeout (evita que la UI quede bloqueada)  (evita quedarse colgado sin feedback)
+   ------------------------------------------------------------------ */
 async function withTimeout<T = any>(
   promise: PromiseLike<T>,
   ms: number,
@@ -59,7 +70,9 @@ function parseCoordenadas(texto: string): LatLng | null {
 
 const IMAGE_MEDIA_TYPES = "images";
 
-// 2. Helper para manejo de errores
+/* ------------------------------------------------------------------
+   Helper: manejo centralizado de errores (log + alerta)
+   ------------------------------------------------------------------ */
 const handleError = (error: any, context: string = "") => {
   console.error(`Error en ${context}:`, error);
   const errorMessage = error?.message || "Ocurrió un error inesperado";
@@ -70,11 +83,13 @@ const handleError = (error: any, context: string = "") => {
   }
   return error;
 };
-
-//3. Validación relajada: el picker ya limita a imágenes; aceptamos cualquier formato de imagen
+/* ------------------------------------------------------------------
+   Validaciones 
+   ------------------------------------------------------------------ */
+//Aceptamos cualquier formato de imagen
 const validarTipoImagen = (_uri: string): boolean => true;
 
-// 4. Helper para validar y parsear fechas
+// Validar y parsear fechas
 function validarFecha(fechaString: string): string {
   const s = fechaString?.trim();
   if (!s) return new Date().toISOString();
@@ -115,7 +130,9 @@ function validarFecha(fechaString: string): string {
   return parsed.toISOString();
 }
 
-// 5. Tipos
+/* ------------------------------------------------------------------
+   Tipos de datos usados en el formulario
+   ------------------------------------------------------------------ */
 type Catalogo = { id: number; nombre: string };
 type LatLng = { latitude: number; longitude: number };
 type FormData = {
@@ -133,6 +150,10 @@ type FormData = {
   recompensa: string;
 };
 
+/* ------------------------------------------------------------------
+COMPONENTE PRINCIPAL - Reportes de Perdidas
+   ------------------------------------------------------------------ */
+
 export default function ReportesPerdidasScreen() {
   const { isDark } = useTheme();
   const [loading, setLoading] = useState({
@@ -144,7 +165,7 @@ export default function ReportesPerdidasScreen() {
     obteniendoUbicacion: false,
   });
 
-  // 7. Estado del formulario
+  // Estado del formulario
   const [formData, setFormData] = useState<FormData>({
     nombre: "",
     especieId: null,
@@ -159,7 +180,7 @@ export default function ReportesPerdidasScreen() {
     ubicacion: "",
     recompensa: "",
   });
-  // 8. Estados para catálogos
+  // Estados para catálogos
   const [catalogos, setCatalogos] = useState({
     especies: [] as Catalogo[],
     tamanios: [] as Catalogo[],
@@ -171,7 +192,7 @@ export default function ReportesPerdidasScreen() {
     null
   );
 
-  // 9. Ubicación e imagen
+  // Ubicación e imagen
   const [ubicacionActual, setUbicacionActual] = useState<LatLng | null>(null);
   const [foto, setFoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
 
@@ -392,7 +413,7 @@ export default function ReportesPerdidasScreen() {
     }
   };
 
-  // 13. Función para subir foto si existe
+  // Función para subir foto si existe
   const subirFotoSiExiste = async (reporteId: string): Promise<boolean> => {
     if (!foto) return true;
 
@@ -491,7 +512,7 @@ export default function ReportesPerdidasScreen() {
     }
   };
 
-  // 14. Validación de formulario (incluye foto obligatoria)
+  // Validación de formulario (incluye foto obligatoria)
   const validar = (): string[] => {
     const errores: string[] = [];
     if (!formData.especieId) errores.push("Seleccioná el tipo de mascota.");
@@ -499,7 +520,7 @@ export default function ReportesPerdidasScreen() {
     return errores;
   };
 
-  // 15. Publicar reporte de PERDIDAS
+  // Publicar reporte de PERDIDAS
   const publicar = async () => {
     console.log("[Reportes Perdidas] publicar() start", {
       formData,
@@ -1177,6 +1198,10 @@ function Selector({
     </View>
   );
 }
+
+ /* ------------------------------------------------------------------
+      Estilos de la pantalla
+     ------------------------------------------------------------------ */
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: Platform.OS === "ios" ? 60 : 40 },
