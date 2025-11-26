@@ -1,12 +1,3 @@
-// Pantalla para crear un reporte de mascota encontrada
-//  *
-//  *  Propósito
-//  *  ---------
-//  *  • Permitir al usuario rellenar los datos de la mascota (especie, color, etc.).
-//  *  • Seleccionar o capturar una foto que acompañe el reporte.
-//  *  • Indicar la ubicación del avistamiento.
-//  *  • Guardar toda la información en Supabase y subir la foto al bucket de Storage.
-
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -35,9 +26,6 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 
-/* ------------------------------------------------------------------
-   Tipos de datos usados en el formulario
-   ------------------------------------------------------------------ */
 type Catalogo = { id: number; nombre: string };
 type LatLng = { latitude: number; longitude: number };
 type FormData = {
@@ -53,9 +41,7 @@ type FormData = {
   fechaHoraHallazgo: string;
 };
 
-/* ------------------------------------------------------------------
-   Helper: promesa con timeout, rechaza si la promesa tarda más de "ms" milisegundos
-   ------------------------------------------------------------------ */
+// Helper timeout: rechaza si la promesa tarda más de "ms" milisegundos
 async function withTimeout<T = any>(
   promise: PromiseLike<T>,
   ms: number,
@@ -77,10 +63,10 @@ async function withTimeout<T = any>(
 }
 
 const IMAGE_MEDIA_TYPES = "images";
-/* ------------------------------------------------------------------
- * Helper: Muestra el error por consola y mediante alerta.
+/**
+ * Muestra el error por consola y mediante alerta (web o móvil).
  * Devuelve el propio error para que pueda ser lanzado de nuevo si se desea.
- ------------------------------------------------------------------ */
+ */
 
 const handleError = (error: any, context: string = "") => {
   console.error(`Error en ${context}:`, error);
@@ -92,9 +78,7 @@ const handleError = (error: any, context: string = "") => {
   }
   return error;
 };
-/* ------------------------------------------------------------------
-   Validaciones auxiliares
-   ------------------------------------------------------------------ */
+
 // Validación relajada: se acepta cualquier formato de imagen
 const validarTipoImagen = (_uri: string): boolean => true;
 
@@ -122,9 +106,7 @@ function validarFecha(fechaString: string): string {
   return parsed.toISOString();
 }
 
-/* ------------------------------------------------------------------
-   Parseo de coordenadas “lat,lon” 
-   ------------------------------------------------------------------ */
+// Parsear coordenadas desde texto "lat,long"
 function parseCoordenadas(texto: string): LatLng | null {
   if (!texto) return null;
   const s = texto.trim().replace(/\s+/g, "");
@@ -136,9 +118,7 @@ function parseCoordenadas(texto: string): LatLng | null {
   if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
   return { latitude: lat, longitude: lng };
 }
-/* ------------------------------------------------------------------
-  PRINCIPAL COMPONENTE DE LA PANTALLA
-   ------------------------------------------------------------------ */
+
 export default function ReportFoundScreen() {
   const { isDark } = useTheme();
   const [loading, setLoading] = useState({
@@ -248,7 +228,7 @@ export default function ReportFoundScreen() {
     try {
       console.log("[Reporte Encontradas] Iniciando selección de foto...");
 
-      // Solicitar permisos
+      // 1. Solicitar permisos
       console.log("[Reporte Encontradas] Solicitando permisos...");
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -261,14 +241,14 @@ export default function ReportFoundScreen() {
         return;
       }
 
-      // Abrir selector de imágenes
+      // 2. Abrir selector de imágenes
       console.log("[Reporte Encontradas] Abriendo selector de imágenes...");
 
       const sacarFoto = async () => {
         try {
           console.log("[Reporte Encontradas] Iniciando captura de foto...");
       
-          // Permisos de cámara
+          // 1. Permisos de cámara
           const { status } = await ImagePicker.requestCameraPermissionsAsync();
           if (status !== "granted") {
             Alert.alert(
@@ -278,7 +258,7 @@ export default function ReportFoundScreen() {
             return;
           }
       
-          // Abrir cámara
+          // 2. Abrir cámara
           const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
@@ -299,7 +279,7 @@ export default function ReportFoundScreen() {
             type: image.type,
           });
       
-          // Procesar igual que en elegirFoto
+          // 3. Procesar igual que en elegirFoto
           const processedImage = await ImageManipulator.manipulateAsync(
             image.uri,
             [{ resize: { width: 1200 } }],
@@ -350,7 +330,7 @@ export default function ReportFoundScreen() {
         type: image.type,
       });
 
-      // Procesar la imagen
+      // 3. Procesar la imagen
       console.log("[Reporte Encontradas] Procesando imagen...");
       const processedImage = await ImageManipulator.manipulateAsync(
         image.uri,
@@ -358,7 +338,7 @@ export default function ReportFoundScreen() {
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
       );
 
-      // Actualizar el estado con la imagen procesada
+      // 4. Actualizar el estado con la imagen procesada
       setFoto({
         uri: processedImage.uri,
         width: processedImage.width,
@@ -381,11 +361,6 @@ export default function ReportFoundScreen() {
       );
     }
   };
-   /* ------------------------------------------------------------------
-     Subir foto (si existe) al bucket de Supabase Storage
-         - Web: usa fetch → Blob
-         - Nativo: lee como Base64 → ArrayBuffer
-     ------------------------------------------------------------------ */
 
   const subirFotoSiExiste = async (reporteId: string): Promise<boolean> => {
     if (!foto) return true;
@@ -466,9 +441,6 @@ export default function ReportFoundScreen() {
     return errores;
   };
 
-    /* ------------------------------------------------------------------
-      Publicar el reporte
-     ------------------------------------------------------------------ */
   const publicar = async () => {
     console.log("[Reporte Encontradas] publicar() start", {
       formData,
@@ -1146,10 +1118,6 @@ function Selector({
     </View>
   );
 }
-
-   /* ------------------------------------------------------------------
-      Estilos de la pantalla
-     ------------------------------------------------------------------ */
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: Platform.OS === "ios" ? 60 : 40 },
