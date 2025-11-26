@@ -1,4 +1,4 @@
-## Pantallas de la Aplicación RadarPet
+## Pantallas de la Aplicación RadarPet 🐾
 
 RadarPet es una aplicación móvil desarrollada con React Native y Expo que permite a los usuarios reportar mascotas perdidas y encontradas, facilitando su reencuentro a través de un sistema de mapas interactivo y reportes geolocalizados.
 
@@ -19,13 +19,21 @@ RadarPet es una aplicación móvil desarrollada con React Native y Expo que perm
 - **Mapa Completo (`/app/mapa-completo.tsx`)**: Vista de mapa a pantalla completa con todos los reportes de mascotas perdidas y encontradas geolocalizados.
 
 #### 📝 Pantallas de Reportes
-- **Reportes de Mascotas Perdidas (`/app/(tabs)/reportes-perdidas.tsx`)**: Formulario completo para reportar mascotas perdidas que incluye:
+- **Reportes de Mascotas Perdidas (`/app/reportes/reportes-perdidas.tsx`)**: Formulario completo para reportar mascotas perdidas que incluye:
   - Información detallada de la mascota (nombre, especie, raza, tamaño, sexo, color)
   - Subida de fotografías obligatoria
   - Selección de ubicación mediante mapa interactivo
   - Descripción de señas particulares
   - Fecha y hora de la pérdida
-- **Reportes de Mascotas Encontradas (`/app/(tabs)/reporte-encontradas.tsx`)**: Formulario para reportar mascotas encontradas con funcionalidades similares.
+- **Reportes de Mascotas Encontradas (`/app/reportes/reporte-encontradas.tsx`)**: Formulario para reportar mascotas encontradas con funcionalidades similares.
+
+#### 📞 Pantallas de Teléfonos Útiles
+- **Teléfonos útiles (`/app/(tabs)/telefonos-utiles.tsx`)**: Pantalla que muestra servicios de emergencia y asistencia cercanos a la ubicación del usuario, facilitando el contacto inmediato en situaciones de urgencia relacionadas con mascotas, que incluye:
+  - Geolocalización Automática
+  - Visualización de Servicios Disponibles (Policía, Bomberos, Refugios y Veterinarias)
+  - Sistema de Filtros para ver los servicios por categoría
+  - Acciones Rápidas: Botón "Llamar": Inicia llamada telefónica directa, Botón "Cómo llegar": Abre navegación GPS (Google Maps/Apple Maps), Información de distancia y dirección visible
+  - Tecnologías Utilizadas: API de OpenStreetMap (Overpass): Obtención de datos geoespaciales en tiempo real, Expo Location: Geolocalización del dispositivo y Linking API: Integración con teléfono y mapas nativos
 
 #### 👤 Pantallas de Perfil
 - **Perfil Principal (`/app/(tabs)/perfil.tsx`)**: Dashboard del usuario que muestra:
@@ -51,12 +59,14 @@ RadarPet es una aplicación móvil desarrollada con React Native y Expo que perm
 
 - **Autenticación**: Sistema completo con Supabase Auth incluyendo OAuth con Google
 - **Geolocalización**: Integración con mapas interactivos y GPS del dispositivo
-- **Subida de Imágenes**: Sistema de carga y optimización de fotografías
+- **Subida de Imágenes**: Sistema de carga y optimización de fotografías, como así también el uso de la cámara para sacar una foto
 - **Base de Datos**: Gestión completa de datos con Supabase
 - **Navegación**: Implementación de tabs y stack navigation con Expo Router
 - **UI/UX**: Interfaz moderna y responsiva con componentes reutilizables
 - **Validaciones**: Sistema robusto de validación de formularios
 - **Estados de Carga**: Indicadores visuales para mejorar la experiencia del usuario
+- **Notificaciones Locales**: Notificaciones luego de crear un reporte (perdidas/encontradas) y actualización de perfil
+- **Llamadas a APIs**: Overpass API
 
 ### Capturas de Pantalla
 
